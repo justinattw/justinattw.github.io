@@ -11,6 +11,7 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
     sphere(x, y, z, sx, sy, sz, color, parent) {
       const object = new THREE.Object3D();
       object.position.set(x, y, z);
+      object.userData.color = color;
       parent.add(object);
       return object;
     },
@@ -27,8 +28,20 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
   let spun = false;
   let stood = false;
   let chair = false, desk = false, airborne = false;
+  let previousAction;
+  let groomedAfterLanding = false;
   for (let frame = 0; frame < 2400; frame++) {
     cat.update(1 / 30);
+    if (previousAction === 'jump-down' && cat.root.userData.action === 'groom') {
+      expect(cat.root.position.y).toBeCloseTo(.03, 3);
+      expect(cat.root.position.x).toBe(-2.4);
+      expect(cat.root.position.z).toBe(-.25);
+      groomedAfterLanding = true;
+    }
+    previousAction = cat.root.userData.action;
+    if (cat.root.userData.action === 'groom') {
+      expect(cat.root.position.toArray()).toEqual([-2.4, .03, -.25]);
+    }
     const rotation = globe.earth.rotation.y;
     globe.update(1 / 30, cat.root.userData.globeTaps);
     if (cat.root.userData.action === 'play-globe') {
@@ -52,10 +65,12 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
     }
     actions.add(cat.root.userData.action);
     if (cat.root.userData.action === 'sit') chair ||= Math.abs(cat.root.position.y - 1.065) < .001;
-    if (cat.root.userData.action === 'groom-desk') desk ||= Math.abs(cat.root.position.y - 1.825) < .001;
+    if (cat.root.userData.action === 'walk-desk') desk ||= Math.abs(cat.root.position.y - 1.825) < .001;
     airborne ||= cat.root.userData.action === 'jump-desk' && cat.root.position.y > 1.9;
   }
-  expect([...actions]).toEqual(expect.arrayContaining(['walk', 'pause', 'groom', 'jump-chair', 'sit', 'jump-desk', 'walk-desk', 'groom-desk', 'play-globe', 'drink-water', 'play-plant', 'jump-down']));
+  expect([...actions]).toEqual(expect.arrayContaining(['walk', 'pause', 'groom', 'jump-chair', 'sit', 'jump-desk', 'walk-desk', 'play-globe', 'drink-water', 'play-plant', 'jump-down']));
+  expect(actions.has('groom-desk')).toBe(false);
+  expect(groomedAfterLanding).toBe(true);
   expect(spun).toBe(true);
   expect(stood).toBe(true);
   expect(globe.root.position.toArray()).toEqual([1.7, 1.8, -2.4]);
@@ -74,6 +89,14 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
   const joints = [];
   cat.root.traverse(node => { if (['hip', 'shoulder', 'knee', 'elbow', 'paw'].includes(node.name)) joints.push(node); });
   expect(joints).toHaveLength(12);
+  const socks = [];
+  cat.root.traverse(node => {
+    if (node.userData.color === '#e6e5df') socks.push(node);
+    expect(node.geometry?.type).not.toBe('TorusGeometry');
+  });
+  expect(socks).toHaveLength(4);
+  expect(socks.every(node => node.parent.name === 'paw')).toBe(true);
+  expect(cat.root.getObjectByName('cat-head').children[0].userData.color).toBe('#202325');
 });
 
 test('larger monstera ruffles on contact and settles, with tall bamboo beside the desk', () => {

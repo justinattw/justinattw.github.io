@@ -37,7 +37,7 @@ npm test
 ```
 
 Vite builds the static site to `dist/`. Three.js renders the procedural room,
-with no downloaded models or image assets. Potted plants and a small gray tabby
+with no downloaded models or image assets. Potted plants and a black cat with white socks
 bring the room to life. The cat animates at up to 30 frames per second in the
 room overview, alternating walks, rests, grooming and jumps onto the chair and desk.
 It paws the desk globe, which spins and slows, drinks from the water glass, and

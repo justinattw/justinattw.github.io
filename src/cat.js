@@ -4,26 +4,13 @@ export function createCat({ scene, sphere, material }) {
   const root = new THREE.Group();
   root.scale.setScalar(.8);
   scene.add(root);
-  const coat = '#969b9d';
+  const coat = '#202325';
   const cream = '#e6e5df';
-  const stripe = '#50565c';
   const torso = new THREE.Group();
   torso.name = 'cat-torso';
   root.add(torso);
-  function marking(points, radius, parent) {
-    const curve = new THREE.CatmullRomCurve3(points);
-    const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 20, radius, 5, false), material(stripe));
-    parent.add(mesh);
-  }
   const body = sphere(-.02, .35, 0, .29, .18, .145, coat, torso);
-  sphere(.1, .32, 0, .14, .14, .14, cream, torso);
-  for (const x of [-.2, -.09, .025]) {
-    const radius = Math.sqrt(1 - ((x + .02) / .29) ** 2);
-    marking(Array.from({ length: 9 }, (_, index) => {
-      const angle = -1.9 + index * 3.8 / 8;
-      return new THREE.Vector3(x, .35 + .183 * radius * Math.cos(angle), .15 * radius * Math.sin(angle));
-    }), .005, torso);
-  }
+  sphere(.1, .32, 0, .14, .14, .14, coat, torso);
   const head = new THREE.Group();
   head.name = 'cat-head';
   head.position.set(.22, .5, 0);
@@ -50,12 +37,12 @@ export function createCat({ scene, sphere, material }) {
     head.add(inner);
     const side = Math.sign(z);
     const eyeZ = side * .096;
-    const eye = sphere(.146, .025, eyeZ, .012, .038, .029, '#3c3830', head);
+    const eye = sphere(.146, .025, eyeZ, .012, .038, .029, '#a69c58', head);
     eye.rotation.y = -side * .6;
     const pupil = sphere(.155, .026, eyeZ + side * .005, .006, .028, .021, '#17201e', head);
     pupil.rotation.y = -side * .6;
     sphere(.16, .04, eyeZ - side * .003, .005, .009, .006, '#fff4df', head);
-    sphere(.132, -.05, side * .038, .052, .044, .05, cream, head);
+    sphere(.132, -.05, side * .038, .052, .044, .05, coat, head);
     for (const offset of [-.02, .015]) {
       const points = [new THREE.Vector3(.162, -.052, side * .065), new THREE.Vector3(.165, -.045 + offset, side * .175)];
       head.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: '#b7b9b4', transparent: true, opacity: .7 })));
@@ -63,9 +50,6 @@ export function createCat({ scene, sphere, material }) {
   }
   sphere(.177, -.033, 0, .016, .012, .019, '#c48c8e', head);
   const tongue = sphere(.17, -.08, 0, .035, .012, .018, '#cf9492', head);
-  for (const z of [-.055, 0, .055]) {
-    marking([new THREE.Vector3(-.07, .15, z), new THREE.Vector3(0, .17, z), new THREE.Vector3(.055, .155, z)], .004, head);
-  }
   const legs = [];
   for (const x of [-.2, .18]) for (const z of [-.105, .105]) {
     const leg = new THREE.Group();
@@ -93,24 +77,16 @@ export function createCat({ scene, sphere, material }) {
     new THREE.Vector3(-.24, .45, 0), new THREE.Vector3(-.12, .53, 0),
   ]);
   tail.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 24, .045, 10, false), material(coat)));
-  for (const t of [.22, .42, .62, .82, .96]) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(.045, .003, 5, 16), material(stripe));
-    band.position.copy(curve.getPoint(t));
-    band.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), curve.getTangent(t).normalize());
-    tail.add(band);
-  }
   root.traverse(mesh => { if (mesh.isMesh) mesh.castShadow = false; });
   const floor = new THREE.Vector3(1.65, .03, 1);
   const route = [
     { action: 'walk', duration: 4, to: [2.7, .03, .85] },
     { action: 'pause', duration: 2 },
-    { action: 'groom', duration: 4 },
     { action: 'walk', duration: 5, to: [.85, .03, .05] },
     { action: 'jump-chair', duration: 1.25, to: [0, 1.065, .05], clearance: .12 },
     { action: 'sit', duration: 3 },
     { action: 'jump-desk', duration: 1.35, to: [.9, 1.825, -1.25], clearance: .14 },
     { action: 'walk-desk', duration: 2, to: [1.5, 1.825, -1.2] },
-    { action: 'groom-desk', duration: 4 },
     { action: 'walk-desk', duration: 1.5, to: [1.65, 1.825, -1.88] },
     { action: 'play-globe', duration: 4, facing: Math.PI / 2 },
     { action: 'walk-desk', duration: 1.5, to: [1.5, 1.825, -1.2] },
@@ -118,8 +94,11 @@ export function createCat({ scene, sphere, material }) {
     { action: 'walk-desk', duration: .8, to: [-.98, 1.825, -1.35] },
     { action: 'drink-water', duration: 5, facing: Math.PI },
     { action: 'walk-desk', duration: .8, to: [-.98, 1.825, -1] },
-    { action: 'walk-desk', duration: 2, to: [1.5, 1.825, -1.2] },
-    { action: 'jump-down', duration: 1.3, to: [2.6, .03, .1], clearance: .12 },
+    { action: 'walk-desk', duration: 1, to: [-1.6, 1.825, -1.15] },
+    { action: 'jump-down', duration: 1.3, to: [-2.4, .03, -.25], clearance: .12 },
+    { action: 'groom', duration: 4 },
+    { action: 'walk', duration: 1.5, to: [-2.4, .03, .6] },
+    { action: 'walk', duration: 5, to: [2.6, .03, .6] },
     { action: 'walk', duration: 4, to: [2.55, .03, -2.6] },
     { action: 'play-plant', duration: 5, facing: Math.atan2(.5, .45) },
     { action: 'walk', duration: 4, to: [2.6, .03, .1] },

@@ -107,13 +107,14 @@ export function createTerminal({ onCV, onExit }) {
     updateCaret();
     showMenu(false);
     if (!command) return;
+    help.hidden = true;
     const result = Object.hasOwn(commands, command)
       ? commands[command]()
       : `Unknown command: ${command}\nPress \\ for supported commands.`;
     if (result !== null) output.textContent = command === 'clear' ? '' : `justinattw$ ${command}\n${result}`;
   });
   form.append(prompt, commandLine, submit);
-  element.append(output, form, help, menu);
+  element.append(help, output, form, menu);
   document.querySelector('.room-wrap').append(element);
   return { element, showCV: text => { output.textContent = text; showMenu(false); } };
 }

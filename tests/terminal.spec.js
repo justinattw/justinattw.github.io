@@ -5,6 +5,10 @@ test('monitor terminal supports command help, files and opening the original ré
   await page.goto('/#cv');
   const input = page.getByRole('textbox', { name: 'Terminal command' });
   await expect(input).toBeVisible();
+  const hint = page.getByRole('button', { name: 'Backslash for commands' });
+  await expect(hint).toBeVisible();
+  await expect(page.locator('#computer-terminal > :first-child')).toHaveAttribute('aria-label', 'Backslash for commands');
+  await expect(page.locator('#computer-terminal kbd')).toHaveText('\\');
   await expect(page.locator('#computer-terminal form > span:first-child')).toHaveText('justinattw$');
   await input.focus();
   await expect(page.locator('.terminal-caret')).toBeVisible();
@@ -21,6 +25,7 @@ test('monitor terminal supports command help, files and opening the original ré
   await expect(input).toHaveValue('ls');
   await input.press('Enter');
   await expect(page.locator('#computer-terminal pre')).toHaveText('justinattw$ ls\nresume.pdf');
+  await expect(hint).not.toBeVisible();
   await input.fill('not-a-command');
   await input.press('Enter');
   await expect(page.locator('#computer-terminal pre')).toContainText('Unknown command');
@@ -34,8 +39,7 @@ test('monitor terminal supports command help, files and opening the original ré
   await input.fill('clear');
   await input.press('Enter');
   await expect(page.locator('#computer-terminal pre')).toBeEmpty();
-  await expect(page.locator('#computer-terminal kbd')).toHaveText('\\');
-  await page.getByRole('button', { name: 'Backslash for commands' }).click();
+  await input.press('\\');
   await expect(page.locator('#terminal-commands')).toBeVisible();
   await page.locator('#terminal-commands').getByRole('button', { name: 'exit', exact: true }).click();
   await input.press('Enter');

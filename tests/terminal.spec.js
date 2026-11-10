@@ -23,8 +23,9 @@ test('monitor terminal supports command help, files and opening the original ré
   await page.keyboard.press('\\');
   await expect(page.locator('#terminal-commands')).toBeVisible();
   await page.locator('#terminal-commands').getByRole('button', { name: 'ls', exact: true }).click();
-  await expect(input).toHaveValue('ls');
-  await input.press('Enter');
+  await expect(input).toHaveValue('');
+  await expect(input).toBeFocused();
+  await expect(page.locator('#terminal-commands')).not.toBeVisible();
   await expect(page.locator('#computer-terminal pre')).toHaveText('justinattw$ ls\nresume.pdf');
   await expect(hint).not.toBeVisible();
   await input.fill('not-a-command');
@@ -32,8 +33,8 @@ test('monitor terminal supports command help, files and opening the original ré
   await expect(page.locator('#computer-terminal pre')).toContainText('Unknown command');
   await page.context().route('**/justin-wong-resume.pdf', route => route.fulfill({ contentType: 'text/html', body: 'PDF destination' }));
   const popup = page.waitForEvent('popup');
-  await input.fill('open resume.pdf');
-  await input.press('Enter');
+  await input.press('\\');
+  await page.locator('#terminal-commands').getByRole('button', { name: 'open resume.pdf', exact: true }).press('Enter');
   const pdf = await popup;
   await expect(pdf).toHaveURL(/\/justin-wong-resume.pdf$/);
   await pdf.close();
@@ -43,7 +44,6 @@ test('monitor terminal supports command help, files and opening the original ré
   await input.press('\\');
   await expect(page.locator('#terminal-commands')).toBeVisible();
   await page.locator('#terminal-commands').getByRole('button', { name: 'exit', exact: true }).click();
-  await input.press('Enter');
   await expect(page.locator('#room')).toHaveAttribute('data-view', 'room');
   await expect(page.locator('#computer-terminal')).not.toBeVisible();
   await expect(page).not.toHaveURL(/#cv/);

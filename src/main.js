@@ -7,7 +7,7 @@ const backButton = document.querySelector('#scene-back');
 const actions = document.querySelector('#scene-actions');
 const reader = document.querySelector('#scene-reader');
 const status = document.querySelector('#scene-status');
-const sections = new Set(['cv', 'work', 'projects', 'hobbies']);
+const sections = new Set(['cv', 'work', 'projects', 'reading', 'hobbies']);
 const jobs = [...document.querySelectorAll('#work .badge-body')].map(badge => ({
   company: badge.querySelector('h3').textContent,
   role: badge.querySelector('.role-detail').textContent,
@@ -19,6 +19,13 @@ const projects = [...document.querySelectorAll('#projects .project-card')].map(p
   description: project.querySelector('.project-copy > p').textContent,
   note: project.querySelector('.honest-note').textContent,
 }));
+const reading = [...document.querySelectorAll('#reading li')].map(book => ({
+  title: book.querySelector('a').textContent,
+  author: book.querySelector('span').textContent,
+  href: book.querySelector('a').href,
+  shelf: book.dataset.shelf,
+}));
+if (!reading.length) sections.delete('reading');
 function cvPagesFor(title, paragraphs) {
   const lines = [];
   for (const paragraph of paragraphs) {
@@ -70,6 +77,15 @@ function showControls() {
   controls.hidden = !section;
   backButton.textContent = selected ? (section === 'work' ? '← Pinboard' : '← Shelf') : '← Room';
   actions.replaceChildren();
+  if (section === 'reading') {
+    const link = document.createElement('a');
+    link.textContent = selected ? 'View on Goodreads ↗' : 'Goodreads ↗';
+    link.href = selected ? reading[selected.index].href : document.querySelector('.reading-profile').href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    actions.append(link);
+    return;
+  }
   if (section !== 'cv') return;
   const previous = document.createElement('button');
   previous.type = 'button'; previous.textContent = '←'; previous.setAttribute('aria-label', 'Previous CV page');
@@ -106,22 +122,23 @@ async function openSection(id, trigger = document.activeElement) {
     reader.textContent = 'Study terminal. Type open resume.pdf to open the résumé. Press backslash for commands.';
     terminal.focus();
   }
-  else if (id === 'hobbies') reader.textContent = document.querySelector('#hobbies').textContent.trim();
+  else if (id === 'hobbies' || id === 'reading') reader.textContent = document.getElementById(id).textContent.trim();
   else reader.textContent = id === 'work' ? 'Choose a lanyard card. Each card flips over to show the full role.' : 'Choose a titled book to open that project.';
 }
 async function selectItem(kind, index, updateHistory = true) {
   if (kind === 'cv') { showCVPage(cvPage + 1); return; }
-  if (kind === 'book' && selected?.kind === kind && selected.index === index) return back();
+  if ((kind === 'book' || kind === 'reading') && selected?.kind === kind && selected.index === index) return back();
   const token = ++navigation;
   const alreadySelected = selected?.kind === kind && selected.index === index;
   selected = { kind, index };
   if (!alreadySelected && updateHistory) history.pushState(null, '', `#${section}/${kind}-${index}`);
   if (!await room.selectItem(kind, index) || token !== navigation) return;
   showControls();
-  const data = kind === 'job' ? jobs[index] : projects[index];
+  const data = kind === 'job' ? jobs[index] : kind === 'reading' ? reading[index] : projects[index];
   reader.textContent = kind === 'job'
     ? `${data.company}. ${data.role}. ${data.dates}. ${data.bullets.join(' ')}`
-    : `${data.title}. ${data.description} ${data.note}`;
+    : kind === 'reading' ? `${data.title}. ${data.author}. ${data.shelf === 'recent' ? 'Recently read' : 'Currently reading'}.`
+      : `${data.title}. ${data.description} ${data.note}`;
 }
 async function back() {
   const token = ++navigation;
@@ -175,7 +192,7 @@ window.addEventListener('popstate', async () => {
   await openSection(id);
   if (item) {
     const [kind, index] = item.split('-');
-    if ((kind === 'job' && id === 'work' && jobs[Number(index)]) || (kind === 'book' && id === 'projects' && projects[Number(index)])) {
+    if ((kind === 'job' && id === 'work' && jobs[Number(index)]) || (kind === 'book' && id === 'projects' && projects[Number(index)]) || (kind === 'reading' && id === 'reading' && reading[Number(index)])) {
       await selectItem(kind, Number(index), false);
     }
   }
@@ -201,7 +218,7 @@ const roomReady = import('./room.js').then(({ createRoom }) => {
     canvas: document.querySelector('#room'),
     terminal: terminal.element,
     targets: document.querySelector('#room-targets'),
-    jobs, projects,
+    jobs, projects, reading,
     onSelect: id => {
       history.pushState(null, '', `#${id}`);
       openSection(id, document.querySelector(`[data-anchor="${id}"]`));
@@ -220,5 +237,5 @@ const roomReady = import('./room.js').then(({ createRoom }) => {
 const initial = location.hash.slice(1).split('/')[0];
 if (sections.has(initial)) openSection(initial).then(async () => {
   const [kind, index] = (location.hash.slice(1).split('/')[1] || '').split('-');
-  if ((kind === 'job' && initial === 'work' && jobs[Number(index)]) || (kind === 'book' && initial === 'projects' && projects[Number(index)])) await selectItem(kind, Number(index), false);
+  if ((kind === 'job' && initial === 'work' && jobs[Number(index)]) || (kind === 'book' && initial === 'projects' && projects[Number(index)]) || (kind === 'reading' && initial === 'reading' && reading[Number(index)])) await selectItem(kind, Number(index), false);
 });

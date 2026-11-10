@@ -70,10 +70,8 @@ export function createTerminal({ onCV, onExit }) {
     option.textContent = command;
     option.addEventListener('click', () => {
       input.value = command;
-      showMenu(false);
-      input.focus();
-      input.setSelectionRange(command.length, command.length);
-      updateCaret();
+      form.requestSubmit();
+      if (command !== 'exit') input.focus({ preventScroll: true });
     });
     menu.append(option);
   }

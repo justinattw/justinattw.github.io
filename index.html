@@ -21,9 +21,10 @@
         <noscript><style>.study{display:none}.masthead,.explore-nav,footer{position:static;transform:none}.explore-nav{justify-content:center}</style></noscript>
         <h1 class="visually-hidden">Justin Wong's study</h1>
         <div class="room-wrap">
-          <canvas id="room" aria-label="A townhouse study: work-history pinboard above the project bookshelf on the left, computer ahead and interests cupboard on the right. Click or tap to take a closer look."></canvas>
+          <canvas id="room" aria-label="A townhouse study: work-history pinboard above the reading and project shelves on the left, computer ahead and interests cupboard on the right. Click or tap to take a closer look."></canvas>
           <div class="room-targets" id="room-targets" hidden>
             <a class="room-target" data-anchor="projects" href="#projects" aria-label="Explore the project shelf"><span class="target-dot">+</span><span class="target-label">Projects</span></a>
+            <a class="room-target" data-anchor="reading" href="#reading" aria-label="Explore the reading shelf"><span class="target-dot">+</span><span class="target-label">Reading</span></a>
             <a class="room-target" data-anchor="cv" href="#cv" aria-label="Explore the CV computer"><span class="target-dot">+</span><span class="target-label">CV</span></a>
             <a class="room-target" data-anchor="work" href="#work" aria-label="Explore the work-history pinboard"><span class="target-dot">+</span><span class="target-label">Work</span></a>
             <a class="room-target" data-anchor="hobbies" href="#hobbies" aria-label="Open the interests cupboard"><span class="target-dot">+</span><span class="target-label">Interests</span></a>
@@ -34,20 +35,21 @@
       </section>
       <nav class="explore-nav" aria-label="Explore the study">
         <a href="#projects">Projects</a>
+        <a href="#reading">Reading</a>
         <a href="#cv">CV</a>
         <a href="#work">Work</a>
         <a href="#hobbies">Interests</a>
       </nav>
       <div id="scene-controls" hidden>
         <button id="scene-back" type="button" aria-label="Back">← Room</button>
-        <div id="scene-actions" aria-label="Computer controls"></div>
+        <div id="scene-actions" aria-label="Selected item controls"></div>
       </div>
       <p id="scene-reader" class="visually-hidden" role="status" aria-live="polite"></p>
       <div id="content" tabindex="-1">
         <div class="print-heading"><h1>Justin Wong</h1><p>Software engineer · <a href="https://github.com/justinattw">github.com/justinattw</a></p></div>
         <section id="hobbies" class="content-section" aria-labelledby="hobbies-title">
           <h2 id="hobbies-title">Interests</h2>
-          <ul><li>Crosswords</li><li>Skiing</li><li>Football</li><li>Gym</li><li>Languages</li><li>Running</li></ul>
+          <ul><li>Crosswords</li><li>Skiing</li><li>Football</li><li>Gym</li><li>Languages</li><li>Running</li><li>Scuba diving</li></ul>
         </section>
         <section id="projects" class="content-section" aria-labelledby="projects-title">
           <h2 id="projects-title">Projects</h2>
@@ -56,6 +58,8 @@
             <article class="project-card"><div class="relic relic-machine" aria-hidden="true"><div class="mini-machine"><span>CONTAINER / 002</span><b>&gt;_</b></div></div><div class="project-copy"><h3>Mini container runtime</h3><p>A small experiment in how containers work.</p><p class="honest-note">Build notes not yet published.</p></div></article>
           </div>
         </section>
+        <!-- reading:start -->
+        <!-- reading:end -->
         <section id="cv" class="content-section" aria-labelledby="cv-title">
           <h2 id="cv-title">Justin Wong<span class="terminal-cursor" aria-hidden="true">_</span></h2>
           <p class="section-intro">Software engineer · GitHub Notifications</p>

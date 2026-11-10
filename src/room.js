@@ -3,8 +3,9 @@ import { createPhysicalObjects } from './physical-objects.js';
 import { createCat } from './cat.js';
 import { createHobbyCupboard } from './hobby-cupboard.js';
 import { createWindowPlants } from './window-plants.js';
+import { createGlobe } from './globe.js';
 
-export function createRoom({ canvas, targets, onSelect, onReady, onError, onItemSelect = () => {}, jobs = [], projects = [], overview = false, terminal }) {
+export function createRoom({ canvas, targets, onSelect, onReady, onError, onItemSelect = () => {}, jobs = [], projects = [], reading = [], overview = false, terminal }) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#161d19');
   scene.fog = new THREE.FogExp2('#161d19', .012);
@@ -84,7 +85,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
       ctx.fillStyle = background;
       ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = foreground;
-      ctx.font = `${size}px monospace`;
+      ctx.font = `${size}px ${options.font || 'monospace'}`;
       ctx.textBaseline = 'middle';
       text.split('\n').forEach((line, i, lines) => ctx.fillText(line, 30, height / 2 + (i - (lines.length - 1) / 2) * size * 1.5));
       if (options.scanlines) {
@@ -231,7 +232,10 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   innerMedallion.scale.z = 1.3;
 
   const shelf = destination('projects');
-  shelf.position.x = -2.2;
+  shelf.position.x = -1.55;
+  const readingShelf = new THREE.Group();
+  readingShelf.userData.destination = 'reading';
+  shelf.add(readingShelf);
   box(-3.15, 2.05, -3.35, 2.05, 4.1, .72, walnut, shelf);
   box(-3.15, 2.05, -2.96, 1.8, 3.8, .04, '#30231b', shelf);
   for (const x of [-4.18, -2.12]) {
@@ -241,11 +245,45 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   for (const y of [.2, 1.15, 2.1, 3.05, 4.03]) box(-3.15, y, -2.92, 2.12, .12, .98, walnut, shelf);
   for (const [y, w] of [[4.13, 2.24], [4.23, 2.36], [4.3, 2.2]]) box(-3.15, y, -2.92, w, .09, 1, walnut, shelf);
   const books = ['#60453d', '#67704d', '#ab9569', '#344d43', '#716a56', '#393b39'];
-  for (const row of [0, 2, 3]) for (let i = 0; i < 8; i++) {
+  const readingShelves = new Set(reading.map(book => book.shelf));
+  const decorativeRows = [1, ...(!readingShelves.has('recent') ? [2] : []), ...(!readingShelves.has('current') ? [3] : [])];
+  for (const row of decorativeRows) for (let i = 0; i < 8; i++) {
     const h = .48 + random() * .26, x = -3.92 + i * .22, y = .28 + row * .96;
-    box(x, y + h / 2, -2.8, .16, h, .42, books[(i + row) % books.length], shelf);
-    for (const band of [.15, .75]) box(x, y + h * band, -2.58, .12, .018, .013, brass, shelf);
+    box(x, y + h / 2, -2.8, .22, h, .42, books[(i + row) % books.length], shelf);
+    for (const band of [.15, .75]) box(x, y + h * band, -2.58, .18, .018, .013, brass, shelf);
   }
+  function shelfPlaque(text, y, parent) {
+    const shape = new THREE.Shape();
+    shape.moveTo(-.72, -.135);
+    shape.lineTo(.72, -.135);
+    shape.quadraticCurveTo(.775, -.135, .775, -.08);
+    shape.lineTo(.775, .08);
+    shape.quadraticCurveTo(.775, .135, .72, .135);
+    shape.lineTo(-.72, .135);
+    shape.quadraticCurveTo(-.775, .135, -.775, .08);
+    shape.lineTo(-.775, -.08);
+    shape.quadraticCurveTo(-.775, -.135, -.72, -.135);
+    const plaque = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, {
+      depth: .07, bevelEnabled: true, bevelSize: .015, bevelThickness: .012, bevelSegments: 3, steps: 1,
+    }), new THREE.MeshStandardMaterial({ map: grain, color: '#b1885e', roughness: .5 }));
+    plaque.position.set(-3.15, y, -2.39);
+    parent.add(plaque);
+    for (const x of [-3.8, -2.5]) sphere(x, y, -2.3, .012, .012, .006, brass, parent);
+    const texture = surface((ctx, width, height) => {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#fff6e4';
+      ctx.font = '52px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, width / 2, height / 2, width - 100);
+    }, 1024, 154);
+    const lettering = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .195), new THREE.MeshBasicMaterial({ map: texture, transparent: true, toneMapped: false }));
+    lettering.position.set(-3.15, y, -2.302);
+    parent.add(lettering);
+  }
+  if (readingShelves.has('current')) shelfPlaque('Currently reading', 3.05, readingShelf);
+  if (readingShelves.has('recent')) shelfPlaque('Recently read', 2.1, readingShelf);
+  shelfPlaque('Projects', .2, shelf);
 
   // Carved writing desk, inset leather top, turned legs and drawer pulls.
   box(0, 1.64, -1.85, 3.9, .18, 1.8, walnut);
@@ -283,8 +321,31 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   deskLight.position.set(-1.35, 2.4, -2.25);
   scene.add(deskLight);
   box(1.47, 1.87, -2.22, .37, .09, .53, '#493b2c');
-  cylinder(1.4, 2.03, -1.71, .1, .32, '#c5b68f');
-  cylinder(1.4, 2.2, -1.71, .08, .015, '#37241b');
+  const glass = new THREE.Group();
+  glass.position.set(-1.35, 1.82, -1.35);
+  scene.add(glass);
+  const glassMaterial = new THREE.MeshPhysicalMaterial({
+    color: '#d9eeee', transparent: true, opacity: .25,
+    roughness: .12, metalness: 0, depthWrite: false, side: THREE.DoubleSide,
+  });
+  glass.add(new THREE.Mesh(new THREE.LatheGeometry([
+    new THREE.Vector2(0, 0), new THREE.Vector2(.1, 0),
+    new THREE.Vector2(.13, .28), new THREE.Vector2(.12, .28),
+    new THREE.Vector2(.09, .025), new THREE.Vector2(0, .025),
+  ], 32), glassMaterial));
+  cylinder(0, .125, 0, .112, .2, new THREE.MeshStandardMaterial({
+    color: '#9abfc7', transparent: true, opacity: .45, roughness: .2, depthWrite: false,
+  }), glass, .112);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(.125, .006, 8, 32), glassMaterial);
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = .28;
+  glass.add(rim);
+  const ripple = new THREE.Mesh(new THREE.RingGeometry(.065, .07, 32), new THREE.MeshBasicMaterial({
+    color: '#e0f0ef', transparent: true, opacity: .6, side: THREE.DoubleSide, depthWrite: false,
+  }));
+  ripple.rotation.x = -Math.PI / 2;
+  ripple.position.y = .228;
+  glass.add(ripple);
   // A low leather chair leaves the computer screen in full view.
   box(0, .95, .1, 1, .2, .95, leather);
   box(0, 1.28, .54, 1, .7, .14, leather);
@@ -292,7 +353,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   for (let i = 0; i < 5; i++) sphere(-.35 + i * .175, 1.39, .625, .018, .018, .015, brass);
 
   const pinboard = destination('work');
-  pinboard.position.set(-8.47, 2.67, 0);
+  pinboard.position.set(-7.82, 2.67, 0);
   box(3.12, 3.03, -3.67, 2.12, 1.85, .15, walnut, pinboard);
   box(3.12, 3.03, -3.57, 1.96, 1.69, .04, '#806340', pinboard);
   for (const x of [2.1, 4.14]) box(x, 3.03, -3.5, .04, 1.85, .04, brass, pinboard);
@@ -344,7 +405,6 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   const chandelierLight = new THREE.PointLight('#ffdb9a', 8, 15, 2);
   chandelierLight.position.set(0, 6.2, .8);
   scene.add(chandelierLight);
-  // Fern and a brass globe finish the corners without competing with navigation.
   function plant(x, y, z, size, potColor) {
     const leaves = [];
     cylinder(x, y + .25 * size, z, .25 * size, .5 * size, potColor, scene, .34 * size);
@@ -359,17 +419,10 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   }
   plant(6.2, 0, .4, 1, '#786147');
   plant(-7.65, 0, -3.2, 1.35, '#806044');
-  plant(-5.35, 4.345, -3.2, .6, '#758477');
-  plant(1.7, 1.84, -2.45, .45, '#a27856');
   const windowPlants = createWindowPlants({ scene, cylinder, material });
-  cylinder(-5, .5, -.2, .3, .9, walnut);
-  cylinder(-5, .98, -.2, .65, .08, walnut);
-  sphere(-5, 1.52, -.2, .4, .4, .4, '#7b8b73');
-  const meridian = new THREE.Mesh(new THREE.TorusGeometry(.44, .018, 6, 40), brass);
-  meridian.position.set(-5, 1.52, -.2);
-  meridian.rotation.z = -.3;
-  scene.add(meridian);
-  const physical = createPhysicalObjects({ box, surface, brass, pinboard, shelf, jobs, projects, schedule });
+  const globe = createGlobe({ scene, cylinder, surface, walnut, brass });
+  canvas.dataset.globePosition = globe.root.position.toArray().join(',');
+  const physical = createPhysicalObjects({ box, surface, brass, pinboard, shelf, readingShelf, jobs, projects, reading, schedule });
   const cat = createCat({ scene, sphere, material });
   const hobbies = destination('hobbies');
   const cupboard = createHobbyCupboard({ root: hobbies, box, sphere, cylinder, surface, walnut, brass });
@@ -397,15 +450,17 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   }
 
   const anchors = {
-    projects: new THREE.Vector3(-4.55, 3.85, -2.5),
+    projects: new THREE.Vector3(-3.9, .95, -2.5),
+    reading: new THREE.Vector3(-3.9, 4.1, -2.5),
     cv: new THREE.Vector3(.6, 3.02, -1.56),
-    work: new THREE.Vector3(-4.54, 6.4, -3.4),
+    work: new THREE.Vector3(-3.89, 6.4, -3.4),
     hobbies: new THREE.Vector3(6, 4.85, -2.4),
   };
   const views = {
-    projects: { position: [-5.35, 1.8, .8], target: [-5.35, 1.8, -2.85] },
+    projects: { position: [-4.7, .95, .8], target: [-4.7, .95, -2.85] },
+    reading: { position: [-4.7, 3.1, .6], target: [-4.7, 3.1, -2.85] },
     cv: { position: [0, 2.65, .65], target: [0, 2.6, -1.7] },
-    work: { position: [-5.35, 5.7, .1], target: [-5.35, 5.7, -3.5] },
+    work: { position: [-4.7, 5.7, .1], target: [-4.7, 5.7, -3.5] },
     hobbies: { position: [5.1, 2.6, 4], target: [5.1, 2.6, -2.4] },
   };
   const look = new THREE.Vector3(0, 3, -3.5);
@@ -433,7 +488,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     const base = id ? views[id] : home();
     const view = { position: [...base.position], target: [...base.target] };
     if (id && canvas.clientWidth < 650) {
-      const desiredWidth = { cv: 1.9, work: 2.5, projects: 2.6, hobbies: 3.8 }[id];
+      const desiredWidth = { cv: 1.9, work: 2.5, projects: 2.6, reading: 2.6, hobbies: 3.8 }[id];
       const distance = desiredWidth / (2 * Math.tan(THREE.MathUtils.degToRad(24)) * (canvas.clientWidth / canvas.clientHeight));
       view.position[2] = Math.max(view.position[2], view.target[2] + distance);
     }
@@ -442,7 +497,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   function updateTargets() {
     if (!current) targets.replaceChildren(...rootTargets);
     else {
-      const kind = current === 'work' ? 'job' : 'book';
+      const kind = current === 'work' ? 'job' : current === 'reading' ? 'reading' : 'book';
       const items = activeItem ? (activeItem.kind === 'job' ? [activeItem] : []) : current === 'cv' || current === 'hobbies' ? [] : physical.items.filter(item => item.kind === kind);
       targets.replaceChildren(...items.map(item => {
         const button = document.createElement('button');
@@ -468,7 +523,14 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     canvas.dataset.cupboardOpen = String(cupboard.openness === 1);
     cat.root.visible = !current;
     const catMoving = cat.root.visible && !reduced.matches;
-    cat.update(catMoving && lastRender !== undefined ? Math.min((now - lastRender) / 1000, .05) : 0);
+    const animationDelta = catMoving ? delta : 0;
+    cat.update(animationDelta);
+    globe.update(animationDelta, cat.root.userData.globeTaps);
+    canvas.dataset.globeRotation = globe.earth.rotation.y.toFixed(5);
+    ripple.visible = catMoving && cat.root.userData.action === 'drink-water';
+    const ripplePhase = (now / 700) % 1;
+    ripple.scale.setScalar(.3 + ripplePhase);
+    ripple.material.opacity = .6 * (1 - ripplePhase);
     canvas.dataset.catAction = cat.root.userData.action;
     windowPlants.update(now / 1000, catMoving && cat.root.userData.action === 'play-plant');
     lastRender = now;
@@ -554,7 +616,10 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     raycaster.setFromCamera(pointer, camera);
     let node = raycaster.intersectObjects(scene.children, true)[0]?.object;
     while (node && !node.userData.destination) {
-      if (current && node.userData.interaction) return node.userData.interaction;
+      if (current && node.userData.interaction) {
+        const kind = current === 'work' ? 'job' : current === 'projects' ? 'book' : current === 'reading' ? 'reading' : null;
+        if (node.userData.interaction.kind === kind) return node.userData.interaction;
+      }
       node = node.parent;
     }
     return node?.userData.destination;

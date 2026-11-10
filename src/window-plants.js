@@ -2,13 +2,13 @@ import * as THREE from 'three';
 
 export function createWindowPlants({ scene, cylinder, material }) {
   const leaves = [];
-  function stem(points) {
+  function stem(points, parent = scene) {
     const curve = new THREE.CatmullRomCurve3(points.map(point => new THREE.Vector3(...point)));
-    scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 8, .018, 5, false), material('#526b3a')));
+    parent.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 8, .018, 5, false), material('#526b3a')));
   }
-  function pot(x, z, color, radius) {
-    cylinder(x, .27, z, radius * .75, .5, color, scene, radius);
-    cylinder(x, .53, z, radius * .88, .025, '#332a1d');
+  function pot(x, z, color, radius, parent = scene) {
+    cylinder(x, .27, z, radius * .75, .5, color, parent, radius);
+    cylinder(x, .53, z, radius * .88, .025, '#332a1d', parent);
   }
   const splitLeaf = new THREE.Shape();
   splitLeaf.moveTo(0, 0);
@@ -32,19 +32,58 @@ export function createWindowPlants({ scene, cylinder, material }) {
     splitLeaf.holes.push(hole);
   }
   const monsteraGeometry = new THREE.ShapeGeometry(splitLeaf);
-  pot(3, -3.1, '#927354', .38);
-  for (let index = 0; index < 7; index++) {
+  const positions = monsteraGeometry.attributes.position;
+  for (let index = 0; index < positions.count; index++) {
+    positions.setZ(index, .12 * Math.sin(positions.getY(index) * Math.PI) + .12 * positions.getX(index) ** 2);
+  }
+  monsteraGeometry.computeVertexNormals();
+  const monstera = new THREE.Group();
+  monstera.position.set(3, 0, -3.1);
+  monstera.scale.setScalar(1.35);
+  scene.add(monstera);
+  pot(0, 0, '#927354', .38, monstera);
+  for (let index = 0; index < 9; index++) {
     const angle = index * 2.4;
-    const x = 3 + Math.cos(angle) * .46;
-    const y = .76 + (index % 3) * .3;
-    const z = -3.1 + Math.sin(angle) * .3;
-    stem([[3, .53, -3.1], [3, y - .12, -3.1], [x, y, z]]);
+    const x = index === 8 ? 0 : Math.cos(angle) * .46;
+    const y = index === 8 ? .95 : .8 + (index % 3) * .35;
+    const z = index === 8 ? .45 : Math.sin(angle) * .3;
+    const sprig = new THREE.Group();
+    sprig.position.y = .53;
+    monstera.add(sprig);
+    stem([[0, 0, 0], [0, y - .65, 0], [x, y - .53, z]], sprig);
     const leaf = new THREE.Mesh(monsteraGeometry, new THREE.MeshStandardMaterial({ color: index % 2 ? '#3d643b' : '#56794a', side: THREE.DoubleSide, roughness: .7 }));
-    leaf.position.set(x, y, z);
+    leaf.position.set(x, y - .53, z);
     leaf.scale.setScalar(.58 + (index % 2) * .12);
     leaf.rotation.set(-.2, Math.cos(angle) * .6, Math.cos(angle) * .65);
-    scene.add(leaf);
-    leaves.push({ leaf, angle: leaf.rotation.z });
+    if (index === 8) leaf.rotation.set(-.1, 0, 2.6);
+    sprig.add(leaf);
+    leaves.push({ leaf, sprig, angle: leaf.rotation.z });
+  }
+  const bamboo = new THREE.Group();
+  bamboo.position.set(-2.8, 0, -2.6);
+  bamboo.scale.y = 1.3;
+  scene.add(bamboo);
+  pot(0, 0, '#6d7762', .32, bamboo);
+  const bambooLeaf = new THREE.Shape();
+  bambooLeaf.moveTo(0, 0);
+  bambooLeaf.quadraticCurveTo(.1, .2, .5, .23);
+  bambooLeaf.quadraticCurveTo(.23, -.015, 0, 0);
+  const bambooGeometry = new THREE.ShapeGeometry(bambooLeaf);
+  const bambooMaterial = new THREE.MeshStandardMaterial({ color: '#567644', roughness: .7, side: THREE.DoubleSide });
+  for (let stalk = 0; stalk < 5; stalk++) {
+    const x = Math.cos(stalk * 2.4) * .16, z = Math.sin(stalk * 2.4) * .16;
+    const height = 1.65 + (stalk % 3) * .28;
+    cylinder(x, .53 + height / 2, z, .025, height, '#809052', bamboo);
+    for (let y = .8; y < height + .5; y += .3) {
+      cylinder(x, y, z, .032, .025, '#b2b77a', bamboo);
+      if (y < 1.05) continue;
+      for (const side of [-1, 1]) {
+        const leaf = new THREE.Mesh(bambooGeometry, bambooMaterial);
+        leaf.position.set(x, y, z);
+        leaf.rotation.set(-.2, stalk * 1.2, side > 0 ? -.25 : Math.PI + .25);
+        bamboo.add(leaf);
+      }
+    }
   }
   pot(8.35, -3.3, '#758073', .43);
   const banana = new THREE.Shape();
@@ -64,10 +103,16 @@ export function createWindowPlants({ scene, cylinder, material }) {
     leaf.scale.setScalar(.7 + (index % 2) * .2);
     scene.add(leaf);
   }
+  let ruffle = 0;
   return {
+    monstera,
+    bamboo,
     update(time, playing) {
-      leaves.forEach(({ leaf, angle }, index) => {
-        leaf.rotation.z = angle + (playing ? Math.sin(time * 9 + index) * .06 : 0);
+      ruffle = playing ? 1 : ruffle * .88;
+      leaves.forEach(({ leaf, sprig, angle }, index) => {
+        leaf.rotation.z = angle + Math.sin(time * 11 + index) * .16 * ruffle;
+        sprig.rotation.z = Math.sin(time * 7 + index * .8) * .07 * ruffle;
+        sprig.rotation.x = Math.sin(time * 9 + index) * .08 * ruffle;
       });
     },
   };

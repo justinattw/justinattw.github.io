@@ -10,9 +10,10 @@ The monitor also has a browser-only terminal: `open resume.pdf`, `ls`, `cv`,
 `help`, `clear` and `exit` (return to the room). The distant monitor remains an
 empty terminal. Backslash (`\`) opens command suggestions; Tab retains normal
 keyboard navigation. A visible
-commands button provides the same access on touch devices. No shell is executed.
+commands button provides the same access on touch devices. Selecting a suggestion
+runs it immediately. No shell is executed.
 The right-hand cupboard opens to show crosswords, skis, a football, dumbbells,
-language books and running shoes.
+language books, running shoes, and a diving mask, snorkel, tank and fins.
 
 Mouse, touch and keyboard all work. Escape or the back button returns one level.
 On the computer, Left and Right arrow keys turn the fixed-width CV pages.
@@ -38,14 +39,18 @@ npm test
 Vite builds the static site to `dist/`. Three.js renders the procedural room,
 with no downloaded models or image assets. Potted plants and a small gray tabby
 bring the room to life. The cat animates at up to 30 frames per second in the
-room overview, alternating walks, rests, grooming, plant play and jumps onto the
-chair and desk. Monsteras and bird-of-paradise plants sit beneath the
-right window. The cat pauses in close-ups and hidden tabs. Otherwise rendering happens
+room overview, alternating walks, rests, grooming and jumps onto the chair and desk.
+It paws the desk globe, which spins and slows, drinks from the water glass, and
+stands on its hind legs to swat the monstera. Its leaves ruffle and settle.
+Tall bamboo sits left of the desk. The cat pauses in close-ups and hidden tabs. Otherwise rendering happens
 on demand. The display caps pixel density at 2; reduced motion keeps the cat
 still and makes destination changes immediate instead of moving the camera.
 Fonts are local system fonts; the deployed site makes no external asset requests.
 The wall clock follows UK time (`Europe/London`), including GMT/BST changes.
 It refreshes each minute and when the page becomes visible again.
+Reading and Projects focus separately on the upper and lower shelves. Reading
+has "Currently reading" and "Recently read" shelves, the latter limited to five books.
+Unavailable categories have unnamed decorative books instead of labels or links.
 
 ## Updating content
 
@@ -53,6 +58,30 @@ Edit the semantic sections in `index.html`. The same content supplies the physic
 objects, screen-reader descriptions, simple view and printable CV.
 `src/room.js` defines the room and camera; `src/physical-objects.js` builds and
 animates the cards and books. `src/style.css` includes responsive and print layouts.
+
+### Goodreads sync
+
+`.github/workflows/reading.yml` refreshes `src/reading.json` weekly on Mondays at
+07:00 UTC, or manually from Actions. The updater uses Python's standard library:
+
+```sh
+python3 -m unittest discover -s scripts -p 'test_*.py'
+python3 scripts/update-reading.py
+```
+
+The Action tries Goodreads RSS, with the public profile as a fallback for current
+reads. To enable the completed shelf when Goodreads requires a keyed feed, add
+the key from your Goodreads RSS URL as the repository Actions secret
+`GOODREADS_RSS_KEY`. Do not put it in source, a workflow input or a public issue.
+Recently read uses the feed's descending `date_read` order and keeps five entries.
+The key is never written to the generated data.
+
+The build renders the snapshot into static HTML, so the same books work in 3D,
+simple view and without JavaScript. Unavailable shelves are explicitly reported
+in the Action summary and omitted from the site. Unexpected fetch errors fail the
+run after publishing the availability change. A missing RSS key reports a warning.
+Data commits explicitly dispatch the Pages workflow because `GITHUB_TOKEN` pushes
+do not trigger another push workflow.
 
 The owner has explicitly approved publishing the original résumé PDF at
 `public/justin-wong-resume.pdf`, including its contact and visa details.

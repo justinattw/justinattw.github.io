@@ -52,7 +52,7 @@ function drawLogo(ctx, index, x, y, size, color) {
   ctx.restore();
 }
 
-export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, jobs, projects, schedule }) {
+export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, readingShelf, jobs, projects, reading = [], schedule }) {
   const items = [];
   let motion;
   function plane(texture, w, h, z, parent, back = false) {
@@ -137,15 +137,23 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, jo
       }
     }, 1024, 1400);
   }
-  for (let i = 0; i < 2; i++) {
-    const project = projects[i] || { title: i ? 'Container runtime' : 'Momentum backtest', description: 'Project notes coming soon.', note: 'Not yet published.' };
+  const volumes = [
+    ...Array.from({ length: 2 }, (_, index) => ({ kind: 'book', index, data: projects[index] || { title: index ? 'Container runtime' : 'Momentum backtest', description: 'Project notes coming soon.', note: 'Not yet published.' } })),
+    ...reading.map((data, index) => ({ kind: 'reading', index, data })),
+  ];
+  for (const { kind, index: i, data: project } of volumes) {
+    const isReading = kind === 'reading';
+    const rowIndex = isReading ? reading.slice(0, i).filter(book => book.shelf === project.shelf).length : i;
+    const rowCount = isReading ? reading.filter(book => book.shelf === project.shelf).length : 2;
+    const pitch = .35 * Math.min(1, 5 / rowCount);
     const root = new THREE.Group();
-    root.position.set(-3.62 + i * .88, 1.64, -2.78);
-    root.userData.interaction = { kind: 'book', index: i };
-    shelf.add(root);
+    root.position.set(-3.15 + (rowIndex - (rowCount - 1) / 2) * pitch, isReading ? project.shelf === 'recent' ? 2.59 : 3.55 : .69, -2.78);
+    root.userData.interaction = { kind, index: i };
+    (isReading ? readingShelf : shelf).add(root);
     const closed = new THREE.Group();
+    closed.scale.x = pitch / .35;
     root.add(closed);
-    const color = i ? '#6d4937' : '#385443';
+    const color = isReading ? ['#344e64', '#80583e', '#665a3e'][i % 3] : i ? '#6d4937' : '#385443';
     box(0, 0, 0, .28, .81, .61, '#d4c49e', closed);
     for (const x of [-.16, .16]) box(x, 0, 0, .035, .87, .66, color, closed);
     box(0, 0, .33, .35, .87, .045, color, closed);
@@ -153,7 +161,7 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, jo
     const spine = surface((ctx, w, h) => {
       ctx.fillStyle = color; ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = '#dcc898'; ctx.font = '58px Georgia';
-      ctx.textAlign = 'center'; ctx.fillText(i ? 'Container runtime' : 'Momentum backtest', w / 2, h / 2 + 20);
+      ctx.textAlign = 'center'; ctx.fillText(project.title.split(':')[0], w / 2, h / 2 + 20, w - 80);
     }, 1024, 160);
     const spineMesh = plane(spine, .68, .15, .36, closed);
     spineMesh.rotation.z = Math.PI / 2;
@@ -167,13 +175,13 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, jo
       const x = side ? .31 : -.31;
       box(x, 0, -.025, .62, .86, .04, color, leaf);
       const texture = side
-        ? pageTexture('Field notes', [project.description, project.note])
-        : pageTexture(project.title, [i ? 'SYSTEMS / EXPERIMENTS' : 'FINANCE / RESEARCH'], true);
+        ? pageTexture(isReading ? project.shelf === 'recent' ? 'Recently read' : 'Currently reading' : 'Field notes', isReading ? ['View this book on Goodreads using the link below.'] : [project.description, project.note])
+        : pageTexture(project.title, [isReading ? project.author : i ? 'SYSTEMS / EXPERIMENTS' : 'FINANCE / RESEARCH'], true);
       const page = plane(texture, .59, .82, 0, leaf);
       page.position.x = x;
       pages.push(leaf);
     }
-    items.push({ kind: 'book', index: i, root, name: project.title, home: root.position.clone(), stage: new THREE.Vector3(-3.15, 2.2, .8), scale: 2.8, closed, opened, pages, open: 0 });
+    items.push({ kind, index: i, root, name: project.title, home: root.position.clone(), stage: new THREE.Vector3(-3.15, isReading ? 3.1 : 1.5, .8), scale: 2.8, closed, opened, pages, open: 0 });
   }
 
   function animate(item, selected, reduced) {
@@ -185,7 +193,7 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, jo
       item.root.scale.setScalar(THREE.MathUtils.lerp(from.scale, to.scale, t));
       item.root.rotation.y = THREE.MathUtils.lerp(from.rotation, to.rotation, t);
       item.open = THREE.MathUtils.lerp(from.open, to.open, t);
-      if (item.kind === 'book') {
+      if (item.kind === 'book' || item.kind === 'reading') {
         item.closed.visible = item.open < .45;
         item.closed.rotation.y = -Math.PI / 2 * Math.min(item.open / .45, 1);
         item.opened.visible = item.open >= .45;

@@ -69,6 +69,62 @@ export function createHobbyCupboard({ root, box, sphere, cylinder, surface, waln
     sphere(x - .12, .025, z, .065, .085, .075, '#885740', displays[5]);
     for (let lace = 0; lace < 3; lace++) box(x - .055 + lace * .04, .045, z, .012, .012, .11, '#e2d4b8', displays[5]);
   }
+  const diving = new THREE.Group();
+  diving.position.set(-.34, 4.38, .12);
+  root.add(diving);
+  for (const x of [-.105, .105]) {
+    const lens = sphere(x, .12, .06, .09, .075, .025, '#84b8bd', diving);
+    lens.material = new THREE.MeshStandardMaterial({ color: '#84b8bd', roughness: .2, metalness: .15 });
+    const seal = new THREE.Mesh(new THREE.TorusGeometry(.085, .018, 8, 24), new THREE.MeshStandardMaterial({ color: '#263f40' }));
+    seal.scale.y = .82;
+    seal.position.set(x, .12, .085);
+    diving.add(seal);
+  }
+  box(0, .12, .075, .05, .035, .025, '#263f40', diving);
+  const strap = new THREE.Mesh(new THREE.TorusGeometry(.19, .018, 8, 32, Math.PI), new THREE.MeshStandardMaterial({ color: '#263f40' }));
+  strap.rotation.x = Math.PI / 2;
+  strap.position.set(0, .12, -.01);
+  diving.add(strap);
+  cylinder(.24, .26, .02, .024, .42, '#c5a15e', diving);
+  const snorkel = new THREE.Mesh(new THREE.TorusGeometry(.06, .024, 8, 20, Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#263f40' }));
+  snorkel.rotation.z = Math.PI;
+  snorkel.position.set(.3, .05, .02);
+  diving.add(snorkel);
+  cylinder(.24, .48, .02, .03, .05, '#263f40', diving);
+  diving.position.x = -.7;
+  displays[0].position.set(-.86, 3.42, .08);
+  const tank = new THREE.Group();
+  tank.position.set(-.14, 4.18, -.12);
+  root.add(tank);
+  cylinder(0, .28, 0, .105, .48, '#9ba6a2', tank);
+  sphere(0, .52, 0, .105, .07, .105, '#9ba6a2', tank);
+  cylinder(0, .58, 0, .027, .08, brass, tank);
+  box(.04, .62, 0, .09, .025, .04, '#263f40', tank);
+  for (const y of [.14, .39]) {
+    cylinder(0, y, 0, .11, .04, '#263f40', tank);
+  }
+  const hoseCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, .6, .02), new THREE.Vector3(.13, .52, .04),
+    new THREE.Vector3(.12, .12, .08), new THREE.Vector3(-.06, .08, .14),
+  ]);
+  tank.add(new THREE.Mesh(new THREE.TubeGeometry(hoseCurve, 24, .014, 8, false), new THREE.MeshStandardMaterial({ color: '#263f40' })));
+  sphere(-.06, .08, .14, .04, .03, .025, '#263f40', tank);
+  const finShape = new THREE.Shape();
+  finShape.moveTo(-.055, 0);
+  finShape.lineTo(-.12, .38);
+  finShape.quadraticCurveTo(0, .45, .12, .38);
+  finShape.lineTo(.055, 0);
+  finShape.closePath();
+  const finGeometry = new THREE.ExtrudeGeometry(finShape, { depth: .018, bevelEnabled: true, bevelSize: .008, bevelThickness: .005, bevelSegments: 2, steps: 1 });
+  for (const x of [-.94, -.73]) {
+    const fin = new THREE.Group();
+    fin.position.set(x, 2.2, .22);
+    fin.rotation.z = .12;
+    root.add(fin);
+    fin.add(new THREE.Mesh(finGeometry, new THREE.MeshStandardMaterial({ color: '#34646c', roughness: .65 })));
+    sphere(0, .035, .035, .055, .09, .04, '#263f40', fin);
+    for (const dx of [-.04, .04]) box(dx, .25, .028, .009, .25, .012, '#6d9696', fin);
+  }
 
   const doors = [-1, 1].map(side => {
     const pivot = new THREE.Group();

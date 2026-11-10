@@ -1,0 +1,54 @@
+name: Update Goodreads shelves
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: goodreads-sync
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test Goodreads parser
+        run: python -m unittest discover -s scripts -p 'test_*.py'
+      - name: Update shelf data
+        id: sync
+        continue-on-error: true
+        env:
+          GOODREADS_RSS_KEY: ${{ secrets.GOODREADS_RSS_KEY }}
+        run: python scripts/update-reading.py
+      - name: Publish shelf data
+        id: commit
+        run: |
+          git add src/reading.json
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Update Goodreads reading shelves" -m "Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>"
+            git push origin HEAD:main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Deploy updated site
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
+      - name: Report fetch failures
+        if: steps.sync.outcome == 'failure'
+        run: exit 1

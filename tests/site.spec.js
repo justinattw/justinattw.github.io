@@ -1,14 +1,22 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+const readingData = JSON.parse(await readFile(new URL('../src/reading.json', import.meta.url), 'utf8'));
+const readingBooks = [
+  ...(readingData.currentlyReading.synced ? readingData.currentlyReading.books : []),
+  ...(readingData.recentlyRead.synced ? readingData.recentlyRead.books.slice(0, 5) : []),
+];
 
 test('cat walks around the room and respects reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.locator('#room-targets')).toBeVisible();
   const room = page.locator('#room');
+  await expect(room).toHaveAttribute('data-globe-position', '1.7,1.8,-2.4');
+  const globeRotation = await room.getAttribute('data-globe-rotation');
   const resting = await room.getAttribute('data-cat-position');
   await page.waitForTimeout(300);
   await expect(room).toHaveAttribute('data-cat-position', resting);
+  await expect(room).toHaveAttribute('data-globe-rotation', globeRotation);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect.poll(() => room.getAttribute('data-cat-position')).not.toBe(resting);
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -52,7 +60,7 @@ test('room destinations move the camera without opening popups', async ({ page }
   await expect(page.locator('.masthead')).not.toContainText('JUSTIN WONG');
   await expect(page.locator('.masthead .monogram')).toHaveText('jw.');
   await expect(page.locator('.masthead .github-link')).toHaveText('GitHub ↗');
-  for (const id of ['work', 'cv', 'projects', 'hobbies']) {
+  for (const id of ['work', 'cv', 'projects', ...(readingBooks.length ? ['reading'] : []), 'hobbies']) {
     const target = page.locator(`[data-anchor="${id}"]`);
     await target.click();
     await expect(page.locator('#room')).toHaveAttribute('data-moving', 'true');
@@ -74,13 +82,41 @@ test('hobbies cupboard opens and closes with accessible contents', async ({ page
   await expect(page.locator('.explore-nav a[href="#hobbies"]')).toHaveText('Interests');
   await expect(page.locator('#hobbies-title')).toHaveText('Interests');
   await expect(page.locator('#room')).toHaveAttribute('data-cupboard-open', 'true');
-  for (const hobby of ['Crosswords', 'Skiing', 'Football', 'Gym', 'Languages', 'Running']) {
+  for (const hobby of ['Crosswords', 'Skiing', 'Football', 'Gym', 'Languages', 'Running', 'Scuba diving']) {
     await expect(page.locator('#scene-reader')).toContainText(hobby);
   }
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.locator('#room')).toHaveAttribute('data-cupboard-open', 'false');
   await page.getByRole('button', { name: 'Simple view' }).click();
-  await expect(page.locator('#hobbies li')).toHaveCount(6);
+  await expect(page.locator('#hobbies li')).toHaveCount(7);
+});
+
+test('reading and projects have separate shelf focuses and Goodreads book links', async ({ page }) => {
+  test.skip(!readingBooks.length, 'No synced books are available');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#reading');
+  await expect(page.locator('#room')).toHaveAttribute('data-view', 'reading');
+  await expect(page.locator('[data-kind="reading"]')).toHaveCount(readingBooks.length);
+  await expect(page.locator('[data-kind="book"]')).toHaveCount(0);
+  for (const [index, { title }] of readingBooks.entries()) {
+    await page.getByRole('button', { name: `Open ${title}`, exact: true }).click();
+    await expect(page.locator('#room')).toHaveAttribute('data-item', `reading-${index}`);
+    await expect(page.locator('#scene-reader')).toContainText(title);
+    await expect(page.getByRole('link', { name: 'View on Goodreads' })).toHaveAttribute('href', /^https:\/\/www.goodreads.com\/book\/show\//);
+    await expect(page).toHaveURL(new RegExp(`#reading/reading-${index}$`));
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+  }
+  await page.goto('/#reading/reading-0');
+  await expect(page.locator('#room')).toHaveAttribute('data-item', 'reading-0');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await enter(page, 'projects');
+  await expect(page.locator('[data-kind="book"]')).toHaveCount(2);
+  await expect(page.locator('[data-kind="reading"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Simple view' }).click();
+  await expect(page.locator('#reading li')).toHaveCount(readingBooks.length);
 });
 
 test('each 3D lanyard card flips to its complete job details', async ({ page }) => {

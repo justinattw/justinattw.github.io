@@ -8,6 +8,7 @@ export function createCat({ scene, sphere, material }) {
   const cream = '#e6e5df';
   const stripe = '#50565c';
   const torso = new THREE.Group();
+  torso.name = 'cat-torso';
   root.add(torso);
   function marking(points, radius, parent) {
     const curve = new THREE.CatmullRomCurve3(points);
@@ -21,33 +22,49 @@ export function createCat({ scene, sphere, material }) {
     marking(Array.from({ length: 9 }, (_, index) => {
       const angle = -1.9 + index * 3.8 / 8;
       return new THREE.Vector3(x, .35 + .183 * radius * Math.cos(angle), .15 * radius * Math.sin(angle));
-    }), .014, torso);
+    }), .005, torso);
   }
   const head = new THREE.Group();
+  head.name = 'cat-head';
   head.position.set(.22, .5, 0);
   torso.add(head);
-  sphere(0, 0, 0, .18, .18, .17, coat, head);
+  sphere(0, 0, 0, .18, .175, .17, coat, head);
+  const earShape = new THREE.Shape();
+  earShape.moveTo(-.07, 0);
+  earShape.quadraticCurveTo(-.035, .08, -.014, .135);
+  earShape.quadraticCurveTo(0, .16, .018, .132);
+  earShape.quadraticCurveTo(.065, .065, .07, 0);
+  earShape.quadraticCurveTo(0, -.025, -.07, 0);
+  const earGeometry = new THREE.ExtrudeGeometry(earShape, {
+    depth: .025, bevelEnabled: true, bevelSize: .012, bevelThickness: .012, bevelSegments: 3, steps: 1,
+  });
   for (const z of [-.115, .115]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(.095, .2, 3), material(coat));
-    ear.position.set(-.035, .18, z);
+    const ear = new THREE.Mesh(earGeometry, material(coat));
+    ear.rotation.y = Math.PI / 2;
+    ear.position.set(-.025, .115, z);
     head.add(ear);
-    const inner = new THREE.Mesh(new THREE.ConeGeometry(.055, .13, 3), material('#d69b99'));
-    inner.position.set(-.005, .19, z);
+    const inner = new THREE.Mesh(earGeometry, material('#b79395'));
+    inner.rotation.y = Math.PI / 2;
+    inner.scale.set(.55, .65, .35);
+    inner.position.set(.007, .13, z);
     head.add(inner);
-    const eyeZ = Math.sign(z) * .105;
-    sphere(.127, .035, eyeZ, .025, .031, .021, '#78896d', head);
-    sphere(.145, .035, eyeZ, .009, .023, .014, '#222e28', head);
-    sphere(.15, .046, eyeZ, .006, .008, .007, '#fff3d8', head);
-    sphere(.15, -.055, Math.sign(z) * .045, .065, .052, .06, cream, head);
+    const side = Math.sign(z);
+    const eyeZ = side * .096;
+    const eye = sphere(.146, .025, eyeZ, .012, .038, .029, '#3c3830', head);
+    eye.rotation.y = -side * .6;
+    const pupil = sphere(.155, .026, eyeZ + side * .005, .006, .028, .021, '#17201e', head);
+    pupil.rotation.y = -side * .6;
+    sphere(.16, .04, eyeZ - side * .003, .005, .009, .006, '#fff4df', head);
+    sphere(.132, -.05, side * .038, .052, .044, .05, cream, head);
     for (const offset of [-.02, .015]) {
-      const points = [new THREE.Vector3(.175, -.065, Math.sign(z) * .07), new THREE.Vector3(.18, -.045 + offset, Math.sign(z) * .25)];
-      head.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: '#e5cdb0' })));
+      const points = [new THREE.Vector3(.162, -.052, side * .065), new THREE.Vector3(.165, -.045 + offset, side * .175)];
+      head.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: '#b7b9b4', transparent: true, opacity: .7 })));
     }
   }
-  sphere(.2, -.035, 0, .023, .018, .026, '#bd8480', head);
-  marking([[-.09, .1], [-.05, .145], [0, .105], [.05, .145], [.09, .1]].map(([z, y]) => new THREE.Vector3(.11, y, z)), .012, head);
-  for (const side of [-1, 1]) for (const y of [-.005, -.055]) {
-    marking([new THREE.Vector3(-.06, y, side * .16), new THREE.Vector3(0, y - .015, side * .17), new THREE.Vector3(.045, y - .035, side * .155)], .009, head);
+  sphere(.177, -.033, 0, .016, .012, .019, '#c48c8e', head);
+  const tongue = sphere(.17, -.08, 0, .035, .012, .018, '#cf9492', head);
+  for (const z of [-.055, 0, .055]) {
+    marking([new THREE.Vector3(-.07, .15, z), new THREE.Vector3(0, .17, z), new THREE.Vector3(.055, .155, z)], .004, head);
   }
   const legs = [];
   for (const x of [-.2, .18]) for (const z of [-.105, .105]) {
@@ -63,14 +80,8 @@ export function createCat({ scene, sphere, material }) {
     ankle.name = 'paw';
     ankle.position.y = -.12;
     knee.add(ankle);
-    sphere(0, -.06, 0, .047, .08, .045, coat, leg);
-    sphere(0, -.06, 0, .035, .075, .035, coat, knee);
-    for (const y of [-.04, -.08]) {
-      const band = new THREE.Mesh(new THREE.TorusGeometry(.045, .009, 5, 12), material(stripe));
-      band.rotation.x = Math.PI / 2;
-      band.position.y = y;
-      knee.add(band);
-    }
+    sphere(0, -.04, 0, x < 0 ? .09 : .06, .105, x < 0 ? .075 : .055, coat, leg);
+    sphere(0, -.055, 0, .043, .085, .042, coat, knee);
     sphere(.025, -.005, 0, .07, .045, .06, cream, ankle);
     legs.push({ upper: leg, knee, ankle, hind: x < 0 });
   }
@@ -81,9 +92,9 @@ export function createCat({ scene, sphere, material }) {
     new THREE.Vector3(0, 0, 0), new THREE.Vector3(-.2, .2, 0),
     new THREE.Vector3(-.24, .45, 0), new THREE.Vector3(-.12, .53, 0),
   ]);
-  tail.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 12, .04, 6, false), material(coat)));
+  tail.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 24, .045, 10, false), material(coat)));
   for (const t of [.22, .42, .62, .82, .96]) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(.04, .01, 5, 12), material(stripe));
+    const band = new THREE.Mesh(new THREE.TorusGeometry(.045, .003, 5, 16), material(stripe));
     band.position.copy(curve.getPoint(t));
     band.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), curve.getTangent(t).normalize());
     tail.add(band);
@@ -100,24 +111,38 @@ export function createCat({ scene, sphere, material }) {
     { action: 'jump-desk', duration: 1.35, to: [.9, 1.825, -1.25], clearance: .14 },
     { action: 'walk-desk', duration: 2, to: [1.5, 1.825, -1.2] },
     { action: 'groom-desk', duration: 4 },
+    { action: 'walk-desk', duration: 1.5, to: [1.65, 1.825, -1.88] },
+    { action: 'play-globe', duration: 4, facing: Math.PI / 2 },
+    { action: 'walk-desk', duration: 1.5, to: [1.5, 1.825, -1.2] },
+    { action: 'walk-desk', duration: 2, to: [-.98, 1.825, -1] },
+    { action: 'walk-desk', duration: .8, to: [-.98, 1.825, -1.35] },
+    { action: 'drink-water', duration: 5, facing: Math.PI },
+    { action: 'walk-desk', duration: .8, to: [-.98, 1.825, -1] },
+    { action: 'walk-desk', duration: 2, to: [1.5, 1.825, -1.2] },
     { action: 'jump-down', duration: 1.3, to: [2.6, .03, .1], clearance: .12 },
-    { action: 'walk', duration: 4, to: [2.35, .03, -2.5] },
-    { action: 'play-plant', duration: 4 },
+    { action: 'walk', duration: 4, to: [2.55, .03, -2.6] },
+    { action: 'play-plant', duration: 5, facing: Math.atan2(.5, .45) },
     { action: 'walk', duration: 4, to: [2.6, .03, .1] },
     { action: 'walk', duration: 5, to: floor.toArray() },
   ];
   let actionIndex = 0, elapsed = 0;
+  let globeTaps = 0;
   let from = floor.clone();
   root.position.copy(floor);
+  const tapsAt = time => Math.max(0, Math.floor((time - .5) / 1.2) + 1);
   function update(delta) {
+    let previousElapsed = elapsed;
     elapsed += delta;
     while (elapsed >= route[actionIndex].duration) {
       const step = route[actionIndex];
+      if (step.action === 'play-globe') globeTaps += tapsAt(step.duration) - tapsAt(previousElapsed);
       elapsed -= step.duration;
+      previousElapsed = 0;
       if (step.to) from.fromArray(step.to);
       actionIndex = (actionIndex + 1) % route.length;
     }
     const step = route[actionIndex];
+    if (step.action === 'play-globe') globeTaps += tapsAt(elapsed) - tapsAt(previousElapsed);
     const t = elapsed / step.duration;
     const jumping = step.clearance !== undefined;
     const flight = THREE.MathUtils.clamp((t - .2) / .62, 0, 1);
@@ -136,9 +161,13 @@ export function createCat({ scene, sphere, material }) {
       const heading = Math.atan2(-(to.z - from.z), to.x - from.x);
       root.rotation.y += Math.atan2(Math.sin(heading - root.rotation.y), Math.cos(heading - root.rotation.y)) * Math.min(delta * 6, 1);
     }
+    if (step.facing !== undefined) {
+      root.rotation.y += Math.atan2(Math.sin(step.facing - root.rotation.y), Math.cos(step.facing - root.rotation.y)) * Math.min(delta * 6, 1);
+    }
     const walking = step.action.startsWith('walk');
     const grooming = step.action.startsWith('groom');
     const playing = step.action.startsWith('play');
+    const drinking = step.action === 'drink-water';
     const stride = elapsed * 10;
     legs.forEach(({ upper, knee, ankle, hind }, index) => {
       const phase = stride + (index === 0 || index === 3 ? 0 : Math.PI);
@@ -152,12 +181,35 @@ export function createCat({ scene, sphere, material }) {
       legs[3].knee.rotation.z = -.8;
       legs[3].ankle.rotation.z = .4;
     }
-    torso.position.y = -crouch * .07;
+    if (step.action === 'play-globe') {
+      const reach = Math.max(0, Math.sin(elapsed / 1.2 * Math.PI * 2 - Math.PI / 3));
+      legs[3].upper.rotation.z = .45 + reach * .8;
+      legs[3].knee.rotation.z = -.7 + reach * .65;
+      legs[3].ankle.rotation.z = -.1;
+    }
+    torso.position.y = drinking ? -.025 : -crouch * .07;
+    torso.position.x = 0;
     torso.rotation.z = jumping && t >= .2 && t <= .82 ? .16 * Math.cos(flight * Math.PI) : 0;
-    head.rotation.z = grooming ? -.35 + Math.sin(elapsed * 8) * .14 : playing ? Math.sin(elapsed * 4) * .1 : walking ? Math.sin(stride) * .025 : 0;
+    if (step.action === 'play-plant') {
+      const rise = THREE.MathUtils.smoothstep(elapsed, 0, .7) * (1 - THREE.MathUtils.smoothstep(elapsed, step.duration - .7, step.duration));
+      const angle = rise * 1.05;
+      torso.rotation.z = angle;
+      // Rotate around the hips so the two supporting paws stay on the floor.
+      torso.position.set(-.2 + .2 * Math.cos(angle) + .3 * Math.sin(angle), .3 + .2 * Math.sin(angle) - .3 * Math.cos(angle), 0);
+      legs.forEach(({ upper, knee, ankle, hind }, index) => {
+        const swat = Math.sin(elapsed * 7 + index * Math.PI / 2);
+        upper.rotation.z = hind ? -angle : rise * (.3 + swat * .45);
+        knee.rotation.z = hind ? 0 : rise * (-.55 + swat * .35);
+        ankle.rotation.z = hind ? 0 : rise * .2;
+      });
+    }
+    head.rotation.z = drinking ? -.35 + Math.sin(elapsed * 12) * .04 : grooming ? -.35 + Math.sin(elapsed * 8) * .14 : playing ? Math.sin(elapsed * 4) * .1 : walking ? Math.sin(stride) * .025 : 0;
+    tongue.visible = drinking;
+    tongue.scale.x = .035 * (.4 + Math.max(0, Math.sin(elapsed * 12)));
     body.scale.y = .18 * (step.action.startsWith('sit') || grooming ? .87 : 1);
     tail.rotation.x = Math.sin(elapsed * 2) * .2;
     root.userData.action = step.action;
+    root.userData.globeTaps = globeTaps;
   }
   update(0);
   return { root, update };

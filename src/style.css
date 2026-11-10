@@ -84,6 +84,9 @@ body[data-destination] #plain-toggle { visibility: hidden; }
 .no-webgl .scene-status { inset: 25px 20px auto; color: var(--muted); }
 
 .project-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.reading-list { display: grid; gap: 20px; padding: 24px 0 0; list-style: none; }
+.reading-list li { display: grid; gap: 5px; }
+.reading-list span { color: #68705d; font-size: 13px; }
 .project-card { background: #f7f1e4; border: 1px solid #c9c7af; border-radius: 4px; overflow: hidden; }
 .relic { height: 160px; display: grid; place-items: center; background: #d7dbc9; perspective: 600px; }
 .paper-sheet { transform: rotate(-9deg) rotateY(-12deg); width: 120px; height: 130px; background: #f2e7cb; box-shadow: 7px 10px 0 #727d5629; padding: 15px; color: #62704f; }
@@ -141,7 +144,7 @@ body[data-destination] #plain-toggle { visibility: hidden; }
   .room-wrap { min-height: 640px; }
   .room-caption { bottom: 100px; left: 0; width: 100%; text-align: center; font-size: 9px; }
   .explore-nav { bottom: 39px; white-space: nowrap; }
-  .explore-nav a { padding: 11px 14px; }
+  .explore-nav a { padding: 11px 10px; font-size: 10px; }
   footer { bottom: 10px; right: 15px; }
   footer button { font-size: 9px; }
   .target-label { font-size: 9px; }
@@ -152,17 +155,17 @@ body[data-destination] #plain-toggle { visibility: hidden; }
   .terminal-body { padding: 18px; }
   .terminal-body, .education p { font-size: 10px; }
   .education h3 { font-size: 12px; }
-  .simple .explore-nav { white-space: normal; }
+  .simple .explore-nav { white-space: normal; flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
 @media print {
   body { background: white; color: #111; overflow: visible; font-size: 10pt; }
-  .masthead, .study, .explore-nav, footer, #projects, #hobbies, .download-button, .skip-link, #scene-controls, #scene-reader { display: none !important; }
+  .masthead, .study, .explore-nav, footer, #projects, #reading, #hobbies, .download-button, .skip-link, #scene-controls, #scene-reader { display: none !important; }
   #content { max-width: none; background: white; }
   #content > .content-section, .enhanced #content:not(.simple-view) > .content-section { display: block !important; padding: 12px 0; }
-  #content > #projects { display: none !important; }
+  #content > #projects, #content > #reading { display: none !important; }
   .print-heading { display: block; border-bottom: 1px solid #aaa; margin-bottom: 12px; }
   .print-heading h1 { font-size: 28pt; margin-bottom: 5px; }
   #cv-title, .section-intro, .terminal-bar, .terminal-body > p, .terminal-body > a { display: none; }

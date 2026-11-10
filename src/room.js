@@ -364,18 +364,15 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     sphere(x, y + .17, -3.49, .028, .028, .025, brass, pinboard);
     for (const dx of [-.055, .055]) box(x + dx, y, -3.48, .025, .3, .018, badges[i], pinboard);
   }
-  // Gilt picture frame and a small pendulum clock above the desk.
-  box(5.1, 6.3, -3.69, 1.9, 1.45, .12, walnut);
-  box(5.1, 6.3, -3.6, 1.78, 1.33, .06, brass);
-  label('THE STUDY\nEST. IN CURIOSITY', 5.1, 6.3, -3.55, 1.62, 1.17, { background: '#263c30', foreground: '#bca77b', size: 30 });
-  cylinder(4.85, 8.3, -3.6, .32, .1, brass).rotation.x = Math.PI / 2;
+  // Brass clock above the interests cabinet.
+  cylinder(5.1, 6.3, -3.6, .32, .1, brass).rotation.x = Math.PI / 2;
   const clockFace = new THREE.Mesh(new THREE.CircleGeometry(.27, 40), material('#d2c19b'));
-  clockFace.position.set(4.85, 8.3, -3.53);
+  clockFace.position.set(5.1, 6.3, -3.53);
   scene.add(clockFace);
   const hourHand = new THREE.Group();
   const minuteHand = new THREE.Group();
-  hourHand.position.set(4.85, 8.3, -3.51);
-  minuteHand.position.set(4.85, 8.3, -3.5);
+  hourHand.position.set(5.1, 6.3, -3.51);
+  minuteHand.position.set(5.1, 6.3, -3.5);
   scene.add(hourHand, minuteHand);
   box(0, .065, 0, .022, .13, .015, '#403b2d', hourHand);
   box(0, .1, 0, .014, .2, .015, '#403b2d', minuteHand);

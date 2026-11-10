@@ -7,7 +7,8 @@ Lanyard cards have playful, procedurally drawn company emblems and flip to revea
 the role's details. Titled books pull off the shelf and open to project notes.
 The CV pages directly on the monitor. There are no popup panels.
 The monitor also has a browser-only terminal: `open resume.pdf`, `ls`, `cv`,
-`help` and `clear`. Tab in its input opens command suggestions; a visible
+`help` and `clear`. Backslash (`\`) opens command suggestions; Tab retains normal
+keyboard navigation. A visible
 commands button provides the same access on touch devices. No shell is executed.
 The right-hand cupboard opens to show crosswords, skis, a football, dumbbells,
 language books and running shoes.

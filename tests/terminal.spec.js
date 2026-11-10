@@ -6,6 +6,9 @@ test('monitor terminal supports command help, files and opening the original ré
   const input = page.getByRole('textbox', { name: 'Terminal command' });
   await expect(input).toBeVisible();
   await input.press('Tab');
+  await expect(page.getByRole('button', { name: 'Run command' })).toBeFocused();
+  await expect(page.locator('#terminal-commands')).not.toBeVisible();
+  await page.keyboard.press('\\');
   await expect(page.locator('#terminal-commands')).toBeVisible();
   await page.locator('#terminal-commands').getByRole('button', { name: 'ls', exact: true }).click();
   await expect(input).toHaveValue('ls');
@@ -24,6 +27,6 @@ test('monitor terminal supports command help, files and opening the original ré
   await input.fill('clear');
   await input.press('Enter');
   await expect(page.locator('#computer-terminal pre')).toBeEmpty();
-  await page.getByRole('button', { name: 'Tab / commands' }).click();
+  await page.getByRole('button', { name: '\\ / commands' }).click();
   await expect(page.locator('#terminal-commands')).toBeVisible();
 });

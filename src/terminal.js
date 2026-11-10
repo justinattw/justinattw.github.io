@@ -6,7 +6,7 @@ export function createTerminal({ onCV }) {
   const output = document.createElement('pre');
   output.setAttribute('role', 'status');
   output.setAttribute('aria-live', 'polite');
-  output.textContent = 'THE STUDY\nType a command. Tab for help.';
+  output.textContent = 'THE STUDY\nType a command. \\ for help.';
   const form = document.createElement('form');
   const prompt = document.createElement('span');
   prompt.textContent = '> ';
@@ -22,7 +22,8 @@ export function createTerminal({ onCV }) {
   submit.setAttribute('aria-label', 'Run command');
   const help = document.createElement('button');
   help.type = 'button';
-  help.textContent = 'Tab / commands';
+  help.textContent = '\\ / commands';
+  help.setAttribute('aria-keyshortcuts', '\\');
   help.setAttribute('aria-expanded', 'false');
   help.setAttribute('aria-controls', 'terminal-commands');
   const menu = document.createElement('div');
@@ -59,19 +60,23 @@ export function createTerminal({ onCV }) {
     menu.append(option);
   }
   help.addEventListener('click', () => showMenu(menu.hidden));
-  input.addEventListener('keydown', event => {
-    if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+  window.addEventListener('keydown', event => {
+    if (element.hidden) return;
+    if (event.key === '\\' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !event.isComposing) {
       event.preventDefault();
       showMenu(menu.hidden);
       if (!menu.hidden) menu.querySelector('button').focus();
+      else input.focus();
     }
     if (event.key === 'Escape' && !menu.hidden) {
+      event.preventDefault();
       event.stopPropagation();
       showMenu(false);
     }
   });
   menu.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
+      event.preventDefault();
       event.stopPropagation();
       showMenu(false);
       input.focus();
@@ -85,7 +90,7 @@ export function createTerminal({ onCV }) {
     if (!command) return;
     const result = Object.hasOwn(commands, command)
       ? commands[command]()
-      : `Unknown command: ${command}\nPress Tab for supported commands.`;
+      : `Unknown command: ${command}\nPress \\ for supported commands.`;
     if (result !== null) output.textContent = result;
   });
   form.append(prompt, input, submit);

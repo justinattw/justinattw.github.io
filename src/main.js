@@ -103,7 +103,7 @@ async function openSection(id, trigger = document.activeElement) {
   if (!await room.focus(id) || token !== navigation) return;
   section = id;
   showControls();
-  if (id === 'cv') reader.textContent = 'Study terminal. Type open resume.pdf to open the résumé. Press Tab for commands.';
+  if (id === 'cv') reader.textContent = 'Study terminal. Type open resume.pdf to open the résumé. Press backslash for commands.';
   else if (id === 'hobbies') reader.textContent = document.querySelector('#hobbies').textContent.trim();
   else reader.textContent = id === 'work' ? 'Choose a lanyard card. Each card flips over to show the full role.' : 'Choose a titled book to open that project.';
 }
@@ -155,7 +155,7 @@ document.addEventListener('click', event => {
 });
 backButton.addEventListener('click', back);
 window.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && document.body.dataset.destination) back();
+  if (event.key === 'Escape' && !event.defaultPrevented && document.body.dataset.destination) back();
   if (section !== 'cv' || simple || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
   if (event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
   if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {

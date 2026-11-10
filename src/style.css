@@ -74,6 +74,10 @@ body[data-destination] #plain-toggle { visibility: hidden; }
 .print-heading { display: none; }
 .simple { background: var(--paper); color: var(--ink); }
 .simple .study { display: none; }
+.simple-download { display: none; }
+.simple .simple-download { display: inline-block; border: 1px solid #ad9365; }
+.simple #hobbies, .simple #reading,
+.simple .explore-nav a[href="#hobbies"], .simple .explore-nav a[href="#reading"] { display: none; }
 .simple .masthead { position: static; background: none; }
 .simple .monogram { color: #6f794e; }
 .simple .explore-nav { position: static; transform: none; justify-content: center; border: 0; background: #253e31; border-radius: 0; color: var(--paper); }

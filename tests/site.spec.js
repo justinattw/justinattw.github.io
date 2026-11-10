@@ -88,7 +88,8 @@ test('hobbies cupboard opens and closes with accessible contents', async ({ page
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.locator('#room')).toHaveAttribute('data-cupboard-open', 'false');
   await page.getByRole('button', { name: 'Simple view' }).click();
-  await expect(page.locator('#hobbies li')).toHaveCount(7);
+  await expect(page.locator('#hobbies')).not.toBeVisible();
+  await expect(page.locator('.explore-nav a[href="#hobbies"]')).not.toBeVisible();
 });
 
 test('reading and projects have separate shelf focuses and Goodreads book links', async ({ page }) => {
@@ -116,7 +117,11 @@ test('reading and projects have separate shelf focuses and Goodreads book links'
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Simple view' }).click();
-  await expect(page.locator('#reading li')).toHaveCount(readingBooks.length);
+  await expect(page.locator('#reading')).not.toBeVisible();
+  await expect(page.locator('.explore-nav a[href="#reading"]')).not.toBeVisible();
+  await page.getByRole('button', { name: 'Room view' }).click();
+  await expect(page.locator('[data-anchor="reading"]')).toBeVisible();
+  await expect(page.locator('[data-anchor="hobbies"]')).toBeVisible();
 });
 
 test('each 3D lanyard card flips to its complete job details', async ({ page }) => {

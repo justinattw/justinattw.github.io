@@ -20,6 +20,7 @@ On the computer, Left and Right arrow keys turn the fixed-width CV pages.
 Plain HTML remains available without JavaScript or WebGL, with a simple-view
 toggle and printable public CV. The company emblems are original playful
 representations, not official brand assets or access credentials.
+Interests and Reading are available in the room only, not in simple view.
 
 ## Development
 

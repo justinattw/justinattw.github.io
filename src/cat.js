@@ -85,7 +85,7 @@ export function createCat({ scene, sphere, material }) {
     { action: 'walk', duration: 4, to: [.85, .03, .6] },
     { action: 'walk', duration: 1, to: [.85, .03, .05] },
     { action: 'jump-chair', duration: 1.25, to: [0, 1.065, .05], clearance: .12 },
-    { action: 'sit', duration: 3 },
+    { action: 'sit', duration: .8 },
     { action: 'jump-desk', duration: 1.35, to: [.9, 1.825, -1.25], clearance: .14 },
     { action: 'walk-desk', duration: 2, to: [1.5, 1.825, -1.2] },
     { action: 'walk-desk', duration: 1.5, to: [1.65, 1.825, -1.88] },

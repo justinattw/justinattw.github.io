@@ -30,9 +30,16 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
   let chair = false, desk = false, airborne = false;
   let previousAction;
   const activityOrder = [];
+  let chairPause = 0;
+  const chairPauses = [];
   expect(cat.root.userData.action).toBe('groom');
   for (let frame = 0; frame < 2400; frame++) {
     cat.update(1 / 30);
+    if (cat.root.userData.action === 'sit') chairPause += 1 / 30;
+    else if (chairPause) {
+      chairPauses.push(chairPause);
+      chairPause = 0;
+    }
     if (previousAction === 'jump-down' && cat.root.userData.action !== 'jump-down') {
       expect(cat.root.position.y).toBeCloseTo(.03, 3);
       expect(cat.root.position.x).toBe(-2.4);
@@ -86,6 +93,8 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
   expect(globe.earth.rotation.y - rotation - firstCoast).toBeLessThan(firstCoast);
   expect([...actions].some(action => action.includes('shelf'))).toBe(false);
   expect(chair && desk && airborne).toBe(true);
+  expect(chairPauses.length).toBeGreaterThan(0);
+  chairPauses.forEach(duration => expect(duration).toBeCloseTo(.8, 1));
   expect(cat.root.scale.x).toBe(.8);
   const joints = [];
   cat.root.traverse(node => { if (['hip', 'shoulder', 'knee', 'elbow', 'paw'].includes(node.name)) joints.push(node); });

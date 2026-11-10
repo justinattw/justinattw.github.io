@@ -78,11 +78,12 @@ export function createCat({ scene, sphere, material }) {
   ]);
   tail.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 24, .045, 10, false), material(coat)));
   root.traverse(mesh => { if (mesh.isMesh) mesh.castShadow = false; });
-  const floor = new THREE.Vector3(1.65, .03, 1);
+  const floor = new THREE.Vector3(-2.4, .03, -.25);
   const route = [
-    { action: 'walk', duration: 4, to: [2.7, .03, .85] },
-    { action: 'pause', duration: 2 },
-    { action: 'walk', duration: 5, to: [.85, .03, .05] },
+    { action: 'groom', duration: 4 },
+    { action: 'walk', duration: 1.5, to: [-2.4, .03, .6] },
+    { action: 'walk', duration: 4, to: [.85, .03, .6] },
+    { action: 'walk', duration: 1, to: [.85, .03, .05] },
     { action: 'jump-chair', duration: 1.25, to: [0, 1.065, .05], clearance: .12 },
     { action: 'sit', duration: 3 },
     { action: 'jump-desk', duration: 1.35, to: [.9, 1.825, -1.25], clearance: .14 },
@@ -96,13 +97,13 @@ export function createCat({ scene, sphere, material }) {
     { action: 'walk-desk', duration: .8, to: [-.98, 1.825, -1] },
     { action: 'walk-desk', duration: 1, to: [-1.6, 1.825, -1.15] },
     { action: 'jump-down', duration: 1.3, to: [-2.4, .03, -.25], clearance: .12 },
-    { action: 'groom', duration: 4 },
     { action: 'walk', duration: 1.5, to: [-2.4, .03, .6] },
     { action: 'walk', duration: 5, to: [2.6, .03, .6] },
     { action: 'walk', duration: 4, to: [2.55, .03, -2.6] },
     { action: 'play-plant', duration: 5, facing: Math.atan2(.5, .45) },
     { action: 'walk', duration: 4, to: [2.6, .03, .1] },
-    { action: 'walk', duration: 5, to: floor.toArray() },
+    { action: 'walk', duration: 5, to: [-2.4, .03, .6] },
+    { action: 'walk', duration: 1.5, to: floor.toArray() },
   ];
   let actionIndex = 0, elapsed = 0;
   let globeTaps = 0;

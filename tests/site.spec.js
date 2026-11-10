@@ -18,7 +18,7 @@ test('cat walks around the room and respects reduced motion', async ({ page }) =
   await expect(room).toHaveAttribute('data-cat-position', resting);
   await expect(room).toHaveAttribute('data-globe-rotation', globeRotation);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await expect.poll(() => room.getAttribute('data-cat-position')).not.toBe(resting);
+  await expect.poll(() => room.getAttribute('data-cat-position'), { timeout: 15000 }).not.toBe(resting);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.waitForTimeout(100);
   const stopped = await room.getAttribute('data-cat-position');

@@ -29,15 +29,16 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
   let stood = false;
   let chair = false, desk = false, airborne = false;
   let previousAction;
-  let groomedAfterLanding = false;
+  const activityOrder = [];
+  expect(cat.root.userData.action).toBe('groom');
   for (let frame = 0; frame < 2400; frame++) {
     cat.update(1 / 30);
-    if (previousAction === 'jump-down' && cat.root.userData.action === 'groom') {
+    if (previousAction === 'jump-down' && cat.root.userData.action !== 'jump-down') {
       expect(cat.root.position.y).toBeCloseTo(.03, 3);
       expect(cat.root.position.x).toBe(-2.4);
-      expect(cat.root.position.z).toBe(-.25);
-      groomedAfterLanding = true;
+      expect(cat.root.position.z).toBeCloseTo(-.25, 1);
     }
+    if (previousAction !== cat.root.userData.action && ['groom', 'play-globe', 'drink-water', 'play-plant'].includes(cat.root.userData.action)) activityOrder.push(cat.root.userData.action);
     previousAction = cat.root.userData.action;
     if (cat.root.userData.action === 'groom') {
       expect(cat.root.position.toArray()).toEqual([-2.4, .03, -.25]);
@@ -68,9 +69,9 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
     if (cat.root.userData.action === 'walk-desk') desk ||= Math.abs(cat.root.position.y - 1.825) < .001;
     airborne ||= cat.root.userData.action === 'jump-desk' && cat.root.position.y > 1.9;
   }
-  expect([...actions]).toEqual(expect.arrayContaining(['walk', 'pause', 'groom', 'jump-chair', 'sit', 'jump-desk', 'walk-desk', 'play-globe', 'drink-water', 'play-plant', 'jump-down']));
+  expect([...actions]).toEqual(expect.arrayContaining(['walk', 'groom', 'jump-chair', 'sit', 'jump-desk', 'walk-desk', 'play-globe', 'drink-water', 'play-plant', 'jump-down']));
   expect(actions.has('groom-desk')).toBe(false);
-  expect(groomedAfterLanding).toBe(true);
+  expect(activityOrder.slice(0, 5)).toEqual(['groom', 'play-globe', 'drink-water', 'play-plant', 'groom']);
   expect(spun).toBe(true);
   expect(stood).toBe(true);
   expect(globe.root.position.toArray()).toEqual([1.7, 1.8, -2.4]);

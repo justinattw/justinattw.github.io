@@ -40,8 +40,9 @@ Vite builds the static site to `dist/`. Three.js renders the procedural room,
 with no downloaded models or image assets. Potted plants and a black cat with white socks
 bring the room to life. The cat animates at up to 30 frames per second in the
 room overview, alternating walks, rests, grooming and jumps onto the chair and desk.
-It paws the desk globe, which spins and slows, drinks from the water glass, and
-stands on its hind legs to swat the monstera. Its leaves ruffle and settle.
+Its loop starts with grooming on the left, then the desk globe, water glass and
+monstera. It jumps down on the left of the desk. The globe spins and slows when
+pawed; the monstera ruffles as the cat stands on its hind legs and swats.
 Tall bamboo sits left of the desk. The cat pauses in close-ups and hidden tabs. Otherwise rendering happens
 on demand. The display caps pixel density at 2; reduced motion keeps the cat
 still and makes destination changes immediate instead of moving the camera.

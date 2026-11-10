@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#161d19">
+    <title>Choose the study · Justin Wong</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/src/style-picker.css">
+    <script type="module" src="/src/style-picker.js"></script>
+  </head>
+  <body>
+    <main>
+      <section class="preview" aria-label="Live interior preview">
+        <a class="home" href="./">← Portfolio</a>
+        <canvas id="room" aria-label="Live 3D preview of the study's interior style"></canvas>
+        <div id="room-targets" hidden></div>
+        <p id="scene-status" role="status">Opening the study…</p>
+        <div class="preview-label"><span id="preview-name">Victorian</span><small>LIVE 3D PREVIEW</small></div>
+      </section>
+      <aside>
+        <p class="eyebrow">THE STUDY / DESIGN ROOM</p>
+        <h1>Make it<br>your kind of room.</h1>
+        <p class="intro">Same architecture. Six palettes and finishes. Tap one to try it.</p>
+        <div id="style-options" role="group" aria-label="Interior styles"></div>
+        <a id="choose-style" href="./?style=victorian">Try Victorian in the portfolio ↗</a>
+        <p class="footnote">Your portfolio stays unchanged while you compare. The chosen style is included in the link, so you can share your favourite.</p>
+        <noscript><p>This live preview needs JavaScript. <a href="./">Return to the portfolio.</a></p></noscript>
+      </aside>
+    </main>
+  </body>
+</html>

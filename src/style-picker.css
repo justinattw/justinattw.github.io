@@ -1,0 +1,40 @@
+:root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #e7dfce; background: #19221c; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 100svh; }
+.preview { height: 100svh; position: sticky; top: 0; background: #161d19; min-width: 0; }
+#room { width: 100%; height: 100%; display: block; }
+#room-targets { display: none !important; }
+.home { position: absolute; top: 25px; left: 28px; z-index: 1; text-decoration: none; font-size: 11px; background: #17201980; padding: 10px 12px; border-radius: 20px; }
+#scene-status { position: absolute; top: 45%; width: 100%; text-align: center; padding: 20px; font-size: 12px; }
+.preview-label { position: absolute; bottom: 30px; left: 32px; text-shadow: 0 1px 5px #000; }
+.preview-label span { display: block; font: 28px Georgia, serif; }
+.preview-label small { display: block; font-size: 8px; letter-spacing: .15em; margin-top: 8px; color: #cbbd9e; }
+aside { padding: 40px 25px; border-left: 1px solid #a68e6333; }
+.eyebrow { font-size: 8px; letter-spacing: .2em; color: #b7a683; margin-bottom: 25px; }
+h1 { font: 36px/1.1 Georgia, serif; letter-spacing: -.025em; margin: 0 0 18px; }
+.intro { font-size: 12px; line-height: 1.8; color: #aeaF9e; margin-bottom: 25px; }
+#style-options { display: grid; gap: 9px; }
+.style-option { display: flex; align-items: center; gap: 13px; text-align: left; width: 100%; border: 1px solid #b5a27c38; background: transparent; padding: 13px; border-radius: 5px; cursor: pointer; color: inherit; font: inherit; }
+.style-option[aria-pressed="true"] { border-color: #cab382; background: #bda77715; }
+.style-option:hover { background: #d3b97f12; }
+.swatches { display: flex; width: 42px; height: 36px; border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+.swatches i { flex: 1; }
+.style-option strong { display: block; font-size: 12px; font-weight: 500; }
+.style-option small { display: block; font-size: 9px; color: #b7b6a5; margin-top: 6px; line-height: 1.5; }
+#choose-style { display: block; text-align: center; margin-top: 25px; padding: 14px; border: 1px solid #c8b17a; color: #e9dcb9; border-radius: 4px; font-size: 11px; text-decoration: none; }
+.footnote { color: #959d8c; font-size: 9px; line-height: 1.8; margin-top: 16px; }
+a:focus-visible, button:focus-visible { outline: 2px solid #ead3a2; outline-offset: 4px; }
+@media (max-width: 750px) {
+  main { display: block; }
+  .preview { position: relative; height: 62svh; min-height: 420px; }
+  aside { padding: 30px 20px; border-top: 1px solid #a68e6333; border-left: 0; }
+  h1 { font-size: 30px; }
+  h1 br { display: none; }
+  #style-options { grid-template-columns: 1fr 1fr; }
+  .style-option { padding: 12px 9px; gap: 8px; }
+  .swatches { width: 27px; height: 36px; }
+  .style-option small { font-size: 8px; }
+  .style-option strong { font-size: 11px; }
+}

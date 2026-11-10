@@ -152,6 +152,13 @@ const roomReady = import('./room.js')
       onReady: () => { status.hidden = true; },
       onError: fallback,
     });
+    const styleId = new URLSearchParams(location.search).get('style');
+    if (styleId) {
+      import('./styles.js').then(({ interiorStyles }) => {
+        const style = interiorStyles.find(style => style.id === styleId);
+        if (style) room?.setStyle(style);
+      }).catch(error => console.error('Unable to apply interior style:', error));
+    }
   })
   .catch(fallback);
 

@@ -513,5 +513,24 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
   render();
   targets.hidden = false;
   onReady();
-  return { focus: id => moveTo(id), reset: () => moveTo(null) };
+  function setStyle(style) {
+    walnut.color.set(style.wood);
+    brass.color.set(style.trim);
+    leather.color.set(style.leather);
+    wallMaterial.map = style.pattern ? wallpaper : null;
+    wallMaterial.color.set(style.wall);
+    if (style.pattern) {
+      const base = new THREE.Color('#294438');
+      wallMaterial.color.setRGB(wallMaterial.color.r / base.r, wallMaterial.color.g / base.g, wallMaterial.color.b / base.b);
+    }
+    wallMaterial.needsUpdate = true;
+    for (const color of ['#243e32', '#29392c']) materials.get(color)?.color.set(style.wall);
+    for (const color of ['#553b33', '#65493b']) materials.get(color)?.color.set(style.fabric);
+    for (const color of ['#b49a67', '#a78b59', '#c2aa7c', '#bda77c']) materials.get(color)?.color.set(style.trim);
+    floorboards.forEach(material => material.color.set(style.floor));
+    renderer.toneMappingExposure = style.exposure;
+    renderer.shadowMap.needsUpdate = true;
+    schedule();
+  }
+  return { focus: id => moveTo(id), reset: () => moveTo(null), setStyle };
 }

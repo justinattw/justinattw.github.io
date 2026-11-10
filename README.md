@@ -45,3 +45,10 @@ and includes public education and work history, not projects or room graphics.
 Enable GitHub Pages with **GitHub Actions** as the source in repository settings.
 The workflow builds and publishes `dist/` on pushes to `main`.
 The intended URL is <https://justinattw.github.io>.
+
+## Temporary interior chooser
+
+`/styles.html` compares six palettes and finishes in the same room. It does not
+change the default portfolio. The selection is encoded in the shareable URL;
+following its preview link applies that style with `?style=<id>`. There is no
+account, backend or tracking. Styles are defined in `src/styles.js`.

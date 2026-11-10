@@ -116,5 +116,9 @@ export function createTerminal({ onCV, onExit }) {
   form.append(prompt, commandLine, submit);
   element.append(help, output, form, menu);
   document.querySelector('.room-wrap').append(element);
-  return { element, showCV: text => { output.textContent = text; showMenu(false); } };
+  return {
+    element,
+    focus: () => input.focus({ preventScroll: true }),
+    showCV: text => { output.textContent = text; showMenu(false); },
+  };
 }

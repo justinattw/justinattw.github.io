@@ -5,6 +5,7 @@ test('monitor terminal supports command help, files and opening the original ré
   await page.goto('/#cv');
   const input = page.getByRole('textbox', { name: 'Terminal command' });
   await expect(input).toBeVisible();
+  await expect(input).toBeFocused();
   const hint = page.getByRole('button', { name: 'Backslash for commands' });
   await expect(hint).toBeVisible();
   await expect(page.locator('#computer-terminal > :first-child')).toHaveAttribute('aria-label', 'Backslash for commands');
@@ -46,4 +47,6 @@ test('monitor terminal supports command help, files and opening the original ré
   await expect(page.locator('#room')).toHaveAttribute('data-view', 'room');
   await expect(page.locator('#computer-terminal')).not.toBeVisible();
   await expect(page).not.toHaveURL(/#cv/);
+  await page.locator('[data-anchor="cv"]').click();
+  await expect(input).toBeFocused();
 });

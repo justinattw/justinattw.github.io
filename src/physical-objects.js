@@ -220,14 +220,14 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, jo
 export function cvTexture(surface, text, page, total) {
   return surface((ctx, w, h) => {
     ctx.fillStyle = '#102d24'; ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = '#accb95'; ctx.font = 'bold 64px monospace';
+    ctx.fillStyle = '#accb95';
     let y = 75;
     const lines = text.split('\n');
     lines.forEach((paragraph, index) => {
-      ctx.font = `${index ? '' : 'bold '}64px monospace`;
+      ctx.font = `${index ? '' : 'bold '}64px "Courier New", Courier, monospace`;
       for (const line of wrap(ctx, paragraph, w - 100)) { ctx.fillText(line, 50, y); y += index ? 78 : 95; }
     });
-    ctx.font = '30px monospace'; ctx.fillStyle = '#86a375';
+    ctx.font = '30px "Courier New", Courier, monospace'; ctx.fillStyle = '#86a375';
     ctx.fillText(`${page + 1} / ${total}                         >`, 50, h - 30);
     ctx.fillStyle = '#00000020';
     for (let y = 0; y < h; y += 5) ctx.fillRect(0, y, w, 1);

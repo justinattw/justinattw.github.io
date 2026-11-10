@@ -8,6 +8,7 @@ the role's details. Titled books pull off the shelf and open to project notes.
 The CV pages directly on the monitor. There are no popup panels.
 
 Mouse, touch and keyboard all work. Escape or the back button returns one level.
+On the computer, Left and Right arrow keys turn the fixed-width CV pages.
 Plain HTML remains available without JavaScript or WebGL, with a simple-view
 toggle and printable public CV. The company emblems are original playful
 representations, not official brand assets or access credentials.

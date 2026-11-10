@@ -70,12 +70,16 @@ function showControls() {
   if (section !== 'cv') return;
   const previous = document.createElement('button');
   previous.type = 'button'; previous.textContent = '←'; previous.setAttribute('aria-label', 'Previous CV page');
+  previous.setAttribute('aria-keyshortcuts', 'ArrowLeft');
+  previous.title = 'Previous CV page (Left arrow)';
   previous.addEventListener('click', () => showCVPage(cvPage - 1));
   const position = document.createElement('span');
   position.id = 'cv-position';
   position.textContent = `${cvPage + 1} / ${cvPages.length}`;
   const next = document.createElement('button');
   next.type = 'button'; next.textContent = '→'; next.setAttribute('aria-label', 'Next CV page');
+  next.setAttribute('aria-keyshortcuts', 'ArrowRight');
+  next.title = 'Next CV page (Right arrow)';
   next.addEventListener('click', () => showCVPage(cvPage + 1));
   const print = document.createElement('button');
   print.type = 'button'; print.textContent = 'Print CV';
@@ -148,8 +152,12 @@ document.addEventListener('click', event => {
 backButton.addEventListener('click', back);
 window.addEventListener('keydown', event => {
   if (event.key === 'Escape' && document.body.dataset.destination) back();
-  if (section === 'cv' && event.key === 'ArrowRight') showCVPage(cvPage + 1);
-  if (section === 'cv' && event.key === 'ArrowLeft') showCVPage(cvPage - 1);
+  if (section !== 'cv' || simple || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  if (event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+  if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+    event.preventDefault();
+    showCVPage(cvPage + (event.key === 'ArrowRight' ? 1 : -1));
+  }
 });
 window.addEventListener('popstate', async () => {
   const [id, item] = location.hash.slice(1).split('/');

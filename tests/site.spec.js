@@ -80,6 +80,13 @@ test('computer pages through the CV on its own screen', async ({ page }) => {
   await expect(page.locator('#scene-reader')).toContainText('GitHub');
   await page.getByRole('button', { name: 'Previous CV page' }).click();
   await expect(page.locator('#cv-position')).toHaveText(/^1 \/ \d+$/);
+  await expect(page.getByRole('button', { name: 'Previous CV page' })).toHaveAttribute('aria-keyshortcuts', 'ArrowLeft');
+  await expect(page.getByRole('button', { name: 'Next CV page' })).toHaveAttribute('aria-keyshortcuts', 'ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('#cv-position')).toHaveText(/^2 \/ \d+$/);
+  await expect(page.locator('#scene-reader')).toContainText('GitHub');
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('#cv-position')).toHaveText(/^1 \/ \d+$/);
   await expect(page.locator('.access-card:visible')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Print CV', exact: true })).toBeVisible();
 });

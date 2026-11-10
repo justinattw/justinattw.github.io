@@ -50,6 +50,21 @@ export function createTerminal({ onCV, onExit }) {
     help.setAttribute('aria-expanded', String(show));
   }
   const commands = {
+    'download resume.pdf': () => {
+      const link = document.createElement('a');
+      link.href = '/justin-wong-resume.pdf';
+      link.download = 'Justin-Wong-Resume.pdf';
+      link.click();
+      return 'Downloading resume.pdf.';
+    },
+    'open github.com/justinattw': () => {
+      const link = document.createElement('a');
+      link.href = 'https://github.com/justinattw';
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.click();
+      return 'Opening github.com/justinattw in a new tab.';
+    },
     'open resume.pdf': () => {
       const link = document.createElement('a');
       link.href = '/justin-wong-resume.pdf';

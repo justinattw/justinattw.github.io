@@ -1,4 +1,14 @@
 import { createTerminal } from './terminal.js';
+import { drawLogo } from './company-logos.js';
+
+document.querySelectorAll('#work .company-mark').forEach((mark, index) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 160;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Company logo rendering is unavailable.');
+  drawLogo(context, index, 80, 80, 120, getComputedStyle(mark).getPropertyValue('--accent').trim());
+  mark.replaceChildren(canvas);
+});
 
 const content = document.querySelector('#content');
 const toggle = document.querySelector('#plain-toggle');

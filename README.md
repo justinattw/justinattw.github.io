@@ -6,7 +6,8 @@ panelling and a retro computer. The camera moves towards each destination.
 Lanyard cards have playful, procedurally drawn company emblems and flip to reveal
 the role's details. Titled books pull off the shelf and open to project notes.
 The CV pages directly on the monitor. There are no popup panels.
-The monitor also has a browser-only terminal: `open resume.pdf`, `ls`, `cv`,
+The monitor also has a browser-only terminal: `open resume.pdf`, `download resume.pdf`,
+`open github.com/justinattw`, `ls`, `cv`,
 `help`, `clear` and `exit` (return to the room). The distant monitor remains an
 empty terminal. Backslash (`\`) opens command suggestions; Tab retains normal
 keyboard navigation. A visible
@@ -21,6 +22,8 @@ Plain HTML remains available without JavaScript or WebGL, with a simple-view
 toggle and printable public CV. The company emblems are original playful
 representations, not official brand assets or access credentials.
 Interests and Reading are available in the room only, not in simple view.
+Simple view uses the same employer emblems as the room cards, with a CV
+section and a direct Download CV link.
 
 ## Development
 

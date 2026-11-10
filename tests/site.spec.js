@@ -250,6 +250,11 @@ test('keyboard, nested deep links, browser history and simple view', async ({ pa
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Simple view' }).click();
   await expect(page.locator('#work')).toBeVisible();
+  await expect(page.locator('#work .company-mark canvas')).toHaveCount(5);
+  await expect(page.locator('.explore-nav a[href="#cv"]')).toHaveText('CV');
+  await expect(page.locator('#cv-title')).toContainText('CV');
+  await expect(page.locator('.simple-download')).toBeVisible();
+  await expect(page.locator('.simple-download')).toHaveAttribute('download', 'Justin-Wong-Resume.pdf');
 });
 
 test('no JavaScript and failed WebGL keep the public CV available', async ({ browser, baseURL, page }) => {

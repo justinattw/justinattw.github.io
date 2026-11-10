@@ -292,7 +292,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   for (let i = 0; i < 5; i++) sphere(-.35 + i * .175, 1.39, .625, .018, .018, .015, brass);
 
   const pinboard = destination('work');
-  pinboard.position.set(1.7, 3.2, 0);
+  pinboard.position.set(-8.47, 2.67, 0);
   box(3.12, 3.03, -3.67, 2.12, 1.85, .15, walnut, pinboard);
   box(3.12, 3.03, -3.57, 1.96, 1.69, .04, '#806340', pinboard);
   for (const x of [2.1, 4.14]) box(x, 3.03, -3.5, .04, 1.85, .04, brass, pinboard);
@@ -304,9 +304,9 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     for (const dx of [-.055, .055]) box(x + dx, y, -3.48, .025, .3, .018, badges[i], pinboard);
   }
   // Gilt picture frame and a small pendulum clock above the desk.
-  box(-5.35, 6, -3.69, 1.9, 1.45, .12, walnut);
-  box(-5.35, 6, -3.6, 1.78, 1.33, .06, brass);
-  label('THE STUDY\nEST. IN CURIOSITY', -5.35, 6, -3.55, 1.62, 1.17, { background: '#263c30', foreground: '#bca77b', size: 30 });
+  box(5.1, 6.3, -3.69, 1.9, 1.45, .12, walnut);
+  box(5.1, 6.3, -3.6, 1.78, 1.33, .06, brass);
+  label('THE STUDY\nEST. IN CURIOSITY', 5.1, 6.3, -3.55, 1.62, 1.17, { background: '#263c30', foreground: '#bca77b', size: 30 });
   cylinder(4.85, 8.3, -3.6, .32, .1, brass).rotation.x = Math.PI / 2;
   const clockFace = new THREE.Mesh(new THREE.CircleGeometry(.27, 40), material('#d2c19b'));
   clockFace.position.set(4.85, 8.3, -3.53);
@@ -399,13 +399,13 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   const anchors = {
     projects: new THREE.Vector3(-4.55, 3.85, -2.5),
     cv: new THREE.Vector3(.6, 3.02, -1.56),
-    work: new THREE.Vector3(5.63, 6.93, -3.4),
+    work: new THREE.Vector3(-4.54, 6.4, -3.4),
     hobbies: new THREE.Vector3(6, 4.85, -2.4),
   };
   const views = {
     projects: { position: [-5.35, 1.8, .8], target: [-5.35, 1.8, -2.85] },
     cv: { position: [0, 2.65, .65], target: [0, 2.6, -1.7] },
-    work: { position: [4.82, 6.23, .1], target: [4.82, 6.23, -3.5] },
+    work: { position: [-5.35, 5.7, .1], target: [-5.35, 5.7, -3.5] },
     hobbies: { position: [5.1, 2.6, 4], target: [5.1, 2.6, -2.4] },
   };
   const look = new THREE.Vector3(0, 3, -3.5);
@@ -422,8 +422,8 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
       return { position: [0, 4.6, Math.max(11, 14 / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect) - 3.5)], target: [0, 4.7, -3.5] };
     }
     return canvas.clientWidth < 650
-      ? { position: [0, 3.6, 18.5], target: [0, 3.6, -3.5] }
-      : { position: [0, 3.6, 9], target: [0, 3.6, -3.5] };
+      ? { position: [0, 3.1, 18.5], target: [0, 3.1, -3.5] }
+      : { position: [0, 3.1, 9], target: [0, 3.1, -3.5] };
   }
   function applyView(view) {
     camera.position.fromArray(view.position);

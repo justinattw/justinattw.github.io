@@ -6,16 +6,29 @@ export function createTerminal({ onCV }) {
   const output = document.createElement('pre');
   output.setAttribute('role', 'status');
   output.setAttribute('aria-live', 'polite');
-  output.textContent = 'THE STUDY\nType a command. \\ for help.';
+  output.textContent = 'Press \\ for commands.';
   const form = document.createElement('form');
   const prompt = document.createElement('span');
-  prompt.textContent = '> ';
+  prompt.textContent = 'justinattw$ ';
   prompt.setAttribute('aria-hidden', 'true');
   const input = document.createElement('input');
   input.setAttribute('aria-label', 'Terminal command');
   input.autocomplete = 'off';
   input.spellcheck = false;
   input.autocapitalize = 'off';
+  const commandLine = document.createElement('span');
+  commandLine.className = 'terminal-input';
+  const caret = document.createElement('span');
+  caret.className = 'terminal-caret';
+  caret.setAttribute('aria-hidden', 'true');
+  function updateCaret() {
+    caret.style.left = `calc(${input.selectionStart ?? input.value.length}ch - ${input.scrollLeft}px)`;
+  }
+  for (const event of ['input', 'click', 'keyup', 'scroll', 'focus']) input.addEventListener(event, updateCaret);
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement === input) updateCaret();
+  });
+  commandLine.append(input, caret);
   const submit = document.createElement('button');
   submit.type = 'submit';
   submit.textContent = '↵';
@@ -56,6 +69,8 @@ export function createTerminal({ onCV }) {
       input.value = command;
       showMenu(false);
       input.focus();
+      input.setSelectionRange(command.length, command.length);
+      updateCaret();
     });
     menu.append(option);
   }
@@ -86,14 +101,15 @@ export function createTerminal({ onCV }) {
     event.preventDefault();
     const command = input.value.trim().replace(/\s+/g, ' ');
     input.value = '';
+    updateCaret();
     showMenu(false);
     if (!command) return;
     const result = Object.hasOwn(commands, command)
       ? commands[command]()
       : `Unknown command: ${command}\nPress \\ for supported commands.`;
-    if (result !== null) output.textContent = result;
+    if (result !== null) output.textContent = command === 'clear' ? '' : `justinattw$ ${command}\n${result}`;
   });
-  form.append(prompt, input, submit);
+  form.append(prompt, commandLine, submit);
   element.append(output, form, help, menu);
   document.querySelector('.room-wrap').append(element);
   return { element, showCV: text => { output.textContent = text; showMenu(false); } };

@@ -39,7 +39,12 @@ h1, h2 { font-family: Georgia, serif; font-weight: 400; }
 #computer-terminal[hidden], #terminal-commands[hidden] { display: none; }
 #computer-terminal pre { margin: 0; min-height: 0; flex: 1; overflow: auto; white-space: pre-wrap; font: inherit; }
 #computer-terminal form { display: flex; align-items: center; flex-shrink: 0; }
-#computer-terminal input { min-width: 0; width: 100%; background: transparent; color: inherit; font: inherit; border: 0; border-bottom: 1px solid #72896b; border-radius: 0; }
+#computer-terminal form > span:first-child { white-space: pre; }
+.terminal-input { position: relative; flex: 1; min-width: 0; overflow: hidden; }
+#computer-terminal input { display: block; min-width: 0; width: 100%; background: transparent; color: inherit; font: inherit; border: 0; border-radius: 0; padding: 0; outline: none; box-shadow: none; caret-color: transparent; }
+.terminal-caret { position: absolute; top: .05em; width: .6em; height: 1em; background: currentColor; pointer-events: none; display: none; animation: terminal-blink 1s step-end infinite; }
+.terminal-input:focus-within .terminal-caret { display: block; }
+@keyframes terminal-blink { 50% { opacity: 0; } }
 #computer-terminal button { color: inherit; background: #173a2c; border: 1px solid #72896b; font: inherit; padding: 3px 6px; cursor: pointer; }
 #terminal-commands { position: absolute; inset: 5px 5px 36px; overflow: auto; padding: 5px; display: flex; flex-direction: column; background: #142f24; gap: 4px; }
 .simple #computer-terminal { display: none; }

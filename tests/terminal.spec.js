@@ -5,6 +5,13 @@ test('monitor terminal supports command help, files and opening the original ré
   await page.goto('/#cv');
   const input = page.getByRole('textbox', { name: 'Terminal command' });
   await expect(input).toBeVisible();
+  await expect(page.locator('#computer-terminal form > span:first-child')).toHaveText('justinattw$');
+  await input.focus();
+  await expect(page.locator('.terminal-caret')).toBeVisible();
+  await expect(input).toHaveCSS('outline-style', 'none');
+  await input.fill('ls');
+  await expect(page.locator('.terminal-caret')).toHaveCSS('left', /.+px/);
+  await input.fill('');
   await input.press('Tab');
   await expect(page.getByRole('button', { name: 'Run command' })).toBeFocused();
   await expect(page.locator('#terminal-commands')).not.toBeVisible();
@@ -13,7 +20,7 @@ test('monitor terminal supports command help, files and opening the original ré
   await page.locator('#terminal-commands').getByRole('button', { name: 'ls', exact: true }).click();
   await expect(input).toHaveValue('ls');
   await input.press('Enter');
-  await expect(page.locator('#computer-terminal pre')).toHaveText('resume.pdf');
+  await expect(page.locator('#computer-terminal pre')).toHaveText('justinattw$ ls\nresume.pdf');
   await input.fill('not-a-command');
   await input.press('Enter');
   await expect(page.locator('#computer-terminal pre')).toContainText('Unknown command');

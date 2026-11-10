@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export function createCat({ scene, sphere, material }) {
   const root = new THREE.Group();
-  root.scale.setScalar(.7);
+  root.scale.setScalar(.8);
   scene.add(root);
   const coat = '#969b9d';
   const cream = '#e6e5df';

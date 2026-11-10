@@ -44,8 +44,8 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
       cat.root.traverse(node => {
         if (node.name === 'paw') paws.push(node.getWorldPosition(new THREE.Vector3()));
       });
-      expect(paws[0].y).toBeCloseTo(.072, 3);
-      expect(paws[1].y).toBeCloseTo(.072, 3);
+      expect(paws[0].y).toBeCloseTo(.078, 3);
+      expect(paws[1].y).toBeCloseTo(.078, 3);
       expect(paws[2].y).toBeGreaterThan(.3);
       expect(paws[3].y).toBeGreaterThan(.3);
       stood = true;
@@ -70,7 +70,7 @@ test('cat routine includes grooming, rests and jumps landing on furniture', () =
   expect(globe.earth.rotation.y - rotation - firstCoast).toBeLessThan(firstCoast);
   expect([...actions].some(action => action.includes('shelf'))).toBe(false);
   expect(chair && desk && airborne).toBe(true);
-  expect(cat.root.scale.x).toBe(.7);
+  expect(cat.root.scale.x).toBe(.8);
   const joints = [];
   cat.root.traverse(node => { if (['hip', 'shoulder', 'knee', 'elbow', 'paw'].includes(node.name)) joints.push(node); });
   expect(joints).toHaveLength(12);

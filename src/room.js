@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createPhysicalObjects, cvTexture } from './physical-objects.js';
+import { createPhysicalObjects } from './physical-objects.js';
 import { createCat } from './cat.js';
 import { createHobbyCupboard } from './hobby-cupboard.js';
 import { createWindowPlants } from './window-plants.js';
@@ -267,7 +267,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   box(0, 2.09, -2.1, .19, .3, .22, '#c3bda1', computer);
   box(0, 2.59, -2.05, 1.55, 1.12, .81, '#cec6aa', computer);
   box(0, 2.62, -1.626, 1.3, .84, .07, '#727d68', computer);
-  const screen = label('JUSTIN WONG\nSOFTWARE ENGINEER\n\n> read cv.txt _', 0, 2.65, -1.583, 1.16, .7, { background: '#102d24', foreground: '#b5cda0', size: 30, scanlines: true }, computer);
+  label('', 0, 2.65, -1.583, 1.16, .7, { background: '#102d24', foreground: '#b5cda0', size: 30, scanlines: true }, computer);
   const screenLight = new THREE.PointLight('#9dce99', .35, 2);
   screenLight.position.set(0, 2.6, -1.3);
   scene.add(screenLight);
@@ -645,12 +645,6 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     }
     return moveTo(id);
   }
-  function showCV(text, page, total) {
-    const previous = screen.material.map;
-    screen.material.map = cvTexture(surface, text, page, total);
-    previous.dispose();
-    schedule();
-  }
   function setStyle(style) {
     canvas.dataset.style = style.id;
     walnut.color.set(style.wood);
@@ -671,5 +665,5 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     renderer.shadowMap.needsUpdate = true;
     schedule();
   }
-  return { focus, back, selectItem, showCV, reset: () => focus(null), setStyle };
+  return { focus, back, selectItem, reset: () => focus(null), setStyle };
 }

@@ -1,4 +1,4 @@
-export function createTerminal({ onCV }) {
+export function createTerminal({ onCV, onExit }) {
   const element = document.createElement('section');
   element.id = 'computer-terminal';
   element.setAttribute('aria-label', 'Study terminal');
@@ -62,6 +62,7 @@ export function createTerminal({ onCV }) {
     cv: () => { onCV(); return null; },
     help: () => { showMenu(true); return 'Choose a command below.'; },
     clear: () => '',
+    exit: () => { onExit(); return null; },
   };
   for (const command of Object.keys(commands)) {
     const option = document.createElement('button');

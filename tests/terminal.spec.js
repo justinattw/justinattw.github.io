@@ -37,4 +37,9 @@ test('monitor terminal supports command help, files and opening the original ré
   await expect(page.locator('#computer-terminal kbd')).toHaveText('\\');
   await page.getByRole('button', { name: 'Backslash for commands' }).click();
   await expect(page.locator('#terminal-commands')).toBeVisible();
+  await page.locator('#terminal-commands').getByRole('button', { name: 'exit', exact: true }).click();
+  await input.press('Enter');
+  await expect(page.locator('#room')).toHaveAttribute('data-view', 'room');
+  await expect(page.locator('#computer-terminal')).not.toBeVisible();
+  await expect(page).not.toHaveURL(/#cv/);
 });

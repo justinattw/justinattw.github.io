@@ -40,7 +40,7 @@ const cvPages = [
 ];
 let room, section, selected, lastTrigger;
 let simple = false, navigation = 0, cvPage = 0;
-const terminal = createTerminal({ onCV: () => showCVPage(0) });
+const terminal = createTerminal({ onCV: () => showCVPage(0), onExit: back });
 
 function setSimple(value) {
   simple = value;
@@ -61,7 +61,6 @@ function setHash(value) {
 }
 function showCVPage(index) {
   cvPage = (index + cvPages.length) % cvPages.length;
-  room?.showCV(cvPages[cvPage], cvPage, cvPages.length);
   terminal.showCV(cvPages[cvPage]);
   reader.textContent = cvPages[cvPage];
   const position = document.querySelector('#cv-position');

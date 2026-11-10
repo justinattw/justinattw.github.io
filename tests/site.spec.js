@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 test('cat walks around the room and respects reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -51,7 +52,7 @@ test('room destinations move the camera without opening popups', async ({ page }
   await expect(page.locator('.masthead')).not.toContainText('JUSTIN WONG');
   await expect(page.locator('.masthead .monogram')).toHaveText('jw.');
   await expect(page.locator('.masthead .github-link')).toHaveText('GitHub ↗');
-  for (const id of ['work', 'cv', 'projects']) {
+  for (const id of ['work', 'cv', 'projects', 'hobbies']) {
     const target = page.locator(`[data-anchor="${id}"]`);
     await target.click();
     await expect(page.locator('#room')).toHaveAttribute('data-moving', 'true');
@@ -65,6 +66,19 @@ test('room destinations move the camera without opening popups', async ({ page }
   expect(errors).toEqual([]);
   expect(await page.locator('#room').evaluate(canvas => canvas.width >= canvas.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('hobbies cupboard opens and closes with accessible contents', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#hobbies');
+  await expect(page.locator('#room')).toHaveAttribute('data-cupboard-open', 'true');
+  for (const hobby of ['Crosswords', 'Skiing', 'Football', 'Gym', 'Languages', 'Running']) {
+    await expect(page.locator('#scene-reader')).toContainText(hobby);
+  }
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.locator('#room')).toHaveAttribute('data-cupboard-open', 'false');
+  await page.getByRole('button', { name: 'Simple view' }).click();
+  await expect(page.locator('#hobbies li')).toHaveCount(6);
 });
 
 test('each 3D lanyard card flips to its complete job details', async ({ page }) => {
@@ -127,7 +141,16 @@ test('computer pages through the CV on its own screen', async ({ page }) => {
   await page.keyboard.press('ArrowLeft');
   await expect(page.locator('#cv-position')).toHaveText(/^1 \/ \d+$/);
   await expect(page.locator('.access-card:visible')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Print CV', exact: true })).toBeVisible();
+  const link = page.getByRole('link', { name: 'Download CV', exact: true });
+  const downloadEvent = page.waitForEvent('download');
+  await link.click();
+  const download = await downloadEvent;
+  expect(download.suggestedFilename()).toBe('Justin-Wong-Resume.pdf');
+  expect(await readFile(await download.path())).toEqual(await readFile('public/justin-wong-resume.pdf'));
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.getByRole('button', { name: 'Simple view' }).click();
+  await expect(page.locator('#cv .download-button')).toHaveAttribute('href', '/justin-wong-resume.pdf');
+  await expect(page.locator('#cv .download-button')).toHaveAttribute('download', 'Justin-Wong-Resume.pdf');
 });
 
 test('cards flip and books unfold with real object animation', async ({ page }) => {
@@ -149,7 +172,7 @@ test('objects respond to actual mouse and touch raycasts', async ({ page, isMobi
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.locator('#room-targets')).toBeVisible();
-  for (const id of ['cv', 'work', 'projects']) {
+  for (const id of ['cv', 'work', 'projects', 'hobbies']) {
     const target = await page.locator(`[data-anchor="${id}"]`).boundingBox();
     await page.locator('#room-targets').evaluate(element => { element.style.display = 'none'; });
     const x = target.x + target.width / 2, y = target.y + target.height / 2;

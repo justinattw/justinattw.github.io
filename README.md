@@ -6,6 +6,8 @@ panelling and a retro computer. The camera moves towards each destination.
 Lanyard cards have playful, procedurally drawn company emblems and flip to reveal
 the role's details. Titled books pull off the shelf and open to project notes.
 The CV pages directly on the monitor. There are no popup panels.
+The right-hand cupboard opens to show crosswords, skis, a football, dumbbells,
+language books and running shoes.
 
 Mouse, touch and keyboard all work. Escape or the back button returns one level.
 On the computer, Left and Right arrow keys turn the fixed-width CV pages.
@@ -29,9 +31,11 @@ npm test
 ```
 
 Vite builds the static site to `dist/`. Three.js renders the procedural room,
-with no downloaded models or image assets. Potted plants and a wandering cat
+with no downloaded models or image assets. Potted plants and a small ginger tabby
 bring the room to life. The cat animates at up to 30 frames per second in the
-room overview, pausing in close-ups and hidden tabs. Otherwise rendering happens
+room overview, alternating walks, rests, grooming, plant play and jumps onto the
+chair, desk and bookshelf. Monsteras and bird-of-paradise plants sit beneath the
+right window. The cat pauses in close-ups and hidden tabs. Otherwise rendering happens
 on demand. The display caps pixel density at 2; reduced motion keeps the cat
 still and makes destination changes immediate instead of moving the camera.
 Fonts are local system fonts; the deployed site makes no external asset requests.
@@ -45,10 +49,12 @@ objects, screen-reader descriptions, simple view and printable CV.
 `src/room.js` defines the room and camera; `src/physical-objects.js` builds and
 animates the cards and books. `src/style.css` includes responsive and print layouts.
 
-Do not add private contact or visa details, source résumé files, unpublished
-results or invented project metrics. Future ideas must stay explicitly labelled
-as concepts. The CV's print button uses the browser's print/save-as-PDF interface
-and includes public education and work history, not projects or room graphics.
+The owner has explicitly approved publishing the original résumé PDF at
+`public/justin-wong-resume.pdf`, including its contact and visa details.
+Both Download CV links download that file unchanged. The in-room and HTML CV
+remain limited to work history, education and the GitHub link.
+Do not add unpublished results or invented project metrics. Future ideas must
+stay explicitly labelled as concepts.
 
 ## Publishing
 

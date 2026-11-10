@@ -5,7 +5,7 @@ const backButton = document.querySelector('#scene-back');
 const actions = document.querySelector('#scene-actions');
 const reader = document.querySelector('#scene-reader');
 const status = document.querySelector('#scene-status');
-const sections = new Set(['cv', 'work', 'projects']);
+const sections = new Set(['cv', 'work', 'projects', 'hobbies']);
 const jobs = [...document.querySelectorAll('#work .badge-body')].map(badge => ({
   company: badge.querySelector('h3').textContent,
   role: badge.querySelector('.role-detail').textContent,
@@ -81,10 +81,11 @@ function showControls() {
   next.setAttribute('aria-keyshortcuts', 'ArrowRight');
   next.title = 'Next CV page (Right arrow)';
   next.addEventListener('click', () => showCVPage(cvPage + 1));
-  const print = document.createElement('button');
-  print.type = 'button'; print.textContent = 'Print CV';
-  print.addEventListener('click', () => window.print());
-  actions.append(previous, position, next, print);
+  const download = document.createElement('a');
+  download.textContent = 'Download CV';
+  download.href = '/justin-wong-resume.pdf';
+  download.download = 'Justin-Wong-Resume.pdf';
+  actions.append(previous, position, next, download);
 }
 async function openSection(id, trigger = document.activeElement) {
   if (!sections.has(id)) return;
@@ -99,6 +100,7 @@ async function openSection(id, trigger = document.activeElement) {
   section = id;
   showControls();
   if (id === 'cv') showCVPage(0);
+  else if (id === 'hobbies') reader.textContent = document.querySelector('#hobbies').textContent.trim();
   else reader.textContent = id === 'work' ? 'Choose a lanyard card. Each card flips over to show the full role.' : 'Choose a titled book to open that project.';
 }
 async function selectItem(kind, index, updateHistory = true) {
@@ -138,7 +140,6 @@ async function back() {
 
 document.documentElement.classList.add('enhanced');
 toggle.hidden = false;
-document.querySelectorAll('[data-print]').forEach(button => { button.hidden = false; });
 document.addEventListener('click', event => {
   const link = event.target.closest('a[href^="#"]');
   if (link && sections.has(link.hash.slice(1)) && !simple) {
@@ -147,7 +148,6 @@ document.addEventListener('click', event => {
     openSection(link.hash.slice(1), link);
   }
   if (link?.hash === '#content' && !simple) setSimple(true);
-  if (event.target.closest('[data-print]')) window.print();
 });
 backButton.addEventListener('click', back);
 window.addEventListener('keydown', event => {

@@ -26,6 +26,7 @@
             <a class="room-target" data-anchor="projects" href="#projects" aria-label="Explore the project shelf"><span class="target-dot">+</span><span class="target-label">Projects</span></a>
             <a class="room-target" data-anchor="cv" href="#cv" aria-label="Explore the CV computer"><span class="target-dot">+</span><span class="target-label">CV</span></a>
             <a class="room-target" data-anchor="work" href="#work" aria-label="Explore the work-history pinboard"><span class="target-dot">+</span><span class="target-label">Work</span></a>
+            <a class="room-target" data-anchor="hobbies" href="#hobbies" aria-label="Open the hobbies cupboard"><span class="target-dot">+</span><span class="target-label">Hobbies</span></a>
           </div>
           <p id="scene-status" class="scene-status" role="status">Opening the study…</p>
         </div>
@@ -35,6 +36,7 @@
         <a href="#projects">Projects</a>
         <a href="#cv">CV</a>
         <a href="#work">Work</a>
+        <a href="#hobbies">Hobbies</a>
       </nav>
       <div id="scene-controls" hidden>
         <button id="scene-back" type="button" aria-label="Back">← Room</button>
@@ -43,6 +45,10 @@
       <p id="scene-reader" class="visually-hidden" role="status" aria-live="polite"></p>
       <div id="content" tabindex="-1">
         <div class="print-heading"><h1>Justin Wong</h1><p>Software engineer · <a href="https://github.com/justinattw">github.com/justinattw</a></p></div>
+        <section id="hobbies" class="content-section" aria-labelledby="hobbies-title">
+          <h2 id="hobbies-title">Hobbies</h2>
+          <ul><li>Crosswords</li><li>Skiing</li><li>Football</li><li>Gym</li><li>Languages</li><li>Running</li></ul>
+        </section>
         <section id="projects" class="content-section" aria-labelledby="projects-title">
           <h2 id="projects-title">Projects</h2>
           <div class="project-grid">
@@ -54,7 +60,7 @@
           <h2 id="cv-title">Justin Wong<span class="terminal-cursor" aria-hidden="true">_</span></h2>
           <p class="section-intro">Software engineer · GitHub Notifications</p>
           <div class="cv-terminal"><div class="terminal-bar"><span aria-hidden="true">● ● ●</span><span>justin@study: ~/cv</span></div><div class="terminal-body"><p><span class="prompt">$</span> cat education.txt</p><article class="education"><h3>University of Oxford</h3><p>MSc Software Engineering (Part-Time)</p><div><span>Oct 2022 – May 2026</span><strong>Merit</strong></div></article><article class="education"><h3>University College London</h3><p>Bachelor of Arts and Sciences<br>Economics Major, Computing Minor</p><div><span>Oct 2017 – Jul 2020</span><strong>First Class Honors</strong></div></article><p><span class="prompt">$</span> open github.com/justinattw</p><a href="https://github.com/justinattw" target="_blank" rel="noopener noreferrer">Browse my GitHub ↗</a></div></div>
-          <button type="button" class="print-button" data-print hidden>Print / save CV as PDF <span aria-hidden="true">↗</span></button>
+          <a class="download-button" href="/justin-wong-resume.pdf" download="Justin-Wong-Resume.pdf">Download CV <span aria-hidden="true">↓</span></a>
         </section>
         <section id="work" class="content-section" aria-labelledby="work-title">
           <h2 id="work-title">Work</h2>

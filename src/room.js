@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createPhysicalObjects, cvTexture } from './physical-objects.js';
 import { createCat } from './cat.js';
+import { createHobbyCupboard } from './hobby-cupboard.js';
+import { createWindowPlants } from './window-plants.js';
 
 export function createRoom({ canvas, targets, onSelect, onReady, onError, onItemSelect = () => {}, jobs = [], projects = [], overview = false }) {
   const scene = new THREE.Scene();
@@ -343,18 +345,22 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   scene.add(chandelierLight);
   // Fern and a brass globe finish the corners without competing with navigation.
   function plant(x, y, z, size, potColor) {
+    const leaves = [];
     cylinder(x, y + .25 * size, z, .25 * size, .5 * size, potColor, scene, .34 * size);
     cylinder(x, y + .51 * size, z, .29 * size, .015, '#382d20');
     for (let i = 0; i < 12; i++) {
       const angle = i * 2.4, r = (.2 + random() * .25) * size, h = (.65 + random() * .55) * size;
       const leaf = sphere(x + Math.cos(angle) * r, y + .5 * size + h * .65, z + Math.sin(angle) * r, .1 * size, h * .5, .055 * size, i % 2 ? '#405a37' : '#627146');
       leaf.rotation.z = Math.cos(angle) * .6;
+      leaves.push({ leaf, angle: leaf.rotation.z });
     }
+    return leaves;
   }
-  plant(5, 0, -.2, 1.5, '#786147');
+  plant(6.2, 0, .4, 1, '#786147');
   plant(-5.65, 0, -2.35, 1.8, '#806044');
-  plant(-3.15, 4.17, -3.2, .6, '#758477');
+  const shelfPlant = plant(-3.15, 4.345, -3.2, .6, '#758477');
   plant(1.7, 1.84, -2.45, .45, '#a27856');
+  const windowPlants = createWindowPlants({ scene, cylinder, material });
   cylinder(-5, .5, -.2, .3, .9, walnut);
   cylinder(-5, .98, -.2, .65, .08, walnut);
   sphere(-5, 1.52, -.2, .4, .4, .4, '#7b8b73');
@@ -364,6 +370,8 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   scene.add(meridian);
   const physical = createPhysicalObjects({ box, surface, brass, pinboard, shelf, jobs, projects, schedule });
   const cat = createCat({ scene, sphere, material });
+  const hobbies = destination('hobbies');
+  const cupboard = createHobbyCupboard({ root: hobbies, box, sphere, cylinder, surface, walnut, brass });
 
   // Batch repeated static geometry without losing each destination's hit region.
   for (const root of [scene, ...scene.children.filter(child => child.isGroup)]) {
@@ -388,14 +396,16 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   }
 
   const anchors = {
-    projects: new THREE.Vector3(-3.15, 2.3, -2.4),
-    cv: new THREE.Vector3(0, 2.64, -1.56),
-    work: new THREE.Vector3(2.77, 3.03, -3.4),
+    projects: new THREE.Vector3(-2.35, 3.85, -2.5),
+    cv: new THREE.Vector3(.6, 3.02, -1.56),
+    work: new THREE.Vector3(3.58, 3.73, -3.4),
+    hobbies: new THREE.Vector3(4.15, 1.86, -2.4),
   };
   const views = {
     projects: { position: [-3.15, 1.8, .8], target: [-3.15, 1.8, -2.85] },
     cv: { position: [0, 2.65, .65], target: [0, 2.6, -1.7] },
     work: { position: [2.77, 3.03, .1], target: [2.77, 3.03, -3.5] },
+    hobbies: { position: [3.35, 1.15, 1.7], target: [3.35, 1.1, -2.4] },
   };
   const look = new THREE.Vector3(0, 3, -3.5);
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -422,7 +432,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     const base = id ? views[id] : home();
     const view = { position: [...base.position], target: [...base.target] };
     if (id && canvas.clientWidth < 650) {
-      const desiredWidth = { cv: 1.9, work: 2.5, projects: 2.6 }[id];
+      const desiredWidth = { cv: 1.9, work: 2.5, projects: 2.6, hobbies: 3.4 }[id];
       const distance = desiredWidth / (2 * Math.tan(THREE.MathUtils.degToRad(24)) * (canvas.clientWidth / canvas.clientHeight));
       view.position[2] = Math.max(view.position[2], view.target[2] + distance);
     }
@@ -432,7 +442,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     if (!current) targets.replaceChildren(...rootTargets);
     else {
       const kind = current === 'work' ? 'job' : 'book';
-      const items = activeItem ? (activeItem.kind === 'job' ? [activeItem] : []) : current === 'cv' ? [] : physical.items.filter(item => item.kind === kind);
+      const items = activeItem ? (activeItem.kind === 'job' ? [activeItem] : []) : current === 'cv' || current === 'hobbies' ? [] : physical.items.filter(item => item.kind === kind);
       targets.replaceChildren(...items.map(item => {
         const button = document.createElement('button');
         button.type = 'button';
@@ -452,9 +462,17 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     clearTimeout(catTimer);
     if (lost || document.hidden) { lastRender = undefined; return; }
     updateClock();
+    const delta = lastRender !== undefined ? Math.min((now - lastRender) / 1000, .05) : 0;
+    const cupboardMoving = cupboard.update(delta, current === 'hobbies', reduced.matches);
+    canvas.dataset.cupboardOpen = String(cupboard.openness === 1);
     cat.root.visible = !current;
     const catMoving = cat.root.visible && !reduced.matches;
     cat.update(catMoving && lastRender !== undefined ? Math.min((now - lastRender) / 1000, .05) : 0);
+    canvas.dataset.catAction = cat.root.userData.action;
+    windowPlants.update(now / 1000, catMoving && cat.root.userData.action === 'play-plant');
+    shelfPlant.forEach(({ leaf, angle }, index) => {
+      leaf.rotation.z = angle + (catMoving && cat.root.userData.action === 'play-shelf-plant' ? Math.sin(now / 110 + index) * .1 : 0);
+    });
     lastRender = now;
     canvas.dataset.catPosition = cat.root.position.toArray().map(value => value.toFixed(3)).join(',');
     const { width, height } = canvas.getBoundingClientRect();
@@ -490,8 +508,8 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     canvas.dataset.view = current || 'room';
     canvas.dataset.item = activeItem ? `${activeItem.kind}-${activeItem.index}` : '';
     canvas.dataset.face = activeItem?.kind === 'job' ? (Math.abs(activeItem.root.rotation.y) < .1 ? 'front' : 'back') : '';
-    canvas.dataset.moving = String(Boolean(transition) || objectMoving);
-    if (transition || objectMoving) schedule();
+    canvas.dataset.moving = String(Boolean(transition) || objectMoving || cupboardMoving);
+    if (transition || objectMoving || cupboardMoving) schedule();
     else if (catMoving) catTimer = setTimeout(schedule, 1000 / 30);
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(render); }

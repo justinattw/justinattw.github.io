@@ -12,6 +12,8 @@ test('room destinations move the camera without opening popups', async ({ page }
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
   await expect(page.locator('#room-targets')).toBeVisible();
+  await expect(page.locator('.masthead')).not.toContainText('JUSTIN WONG');
+  await expect(page.locator('.masthead a')).toHaveText('GitHub ↗');
   for (const id of ['work', 'cv', 'projects']) {
     const target = page.locator(`[data-anchor="${id}"]`);
     await target.click();

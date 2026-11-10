@@ -82,18 +82,18 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, jo
     return surface((ctx, w, h) => {
       ctx.fillStyle = '#eee3c9'; ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = accents[index]; ctx.fillRect(0, 0, w, 12);
-      ctx.fillStyle = '#314335'; ctx.font = 'bold 60px Georgia';
+      ctx.fillStyle = '#314335'; ctx.font = 'bold 60px Georgia, serif';
       ctx.fillText(job.company, 70, 105);
-      ctx.font = '40px sans-serif';
+      ctx.font = '40px Georgia, serif';
       let y = 175;
       for (const line of wrap(ctx, job.role || '', w - 140)) { ctx.fillText(line, 70, y); y += 50; }
-      ctx.font = '33px sans-serif'; ctx.fillStyle = '#68705b';
+      ctx.font = '33px Georgia, serif'; ctx.fillStyle = '#68705b';
       ctx.fillText(job.dates || '', 70, y + 15);
       y += 90;
       const bullets = job.bullets?.length ? job.bullets : ['Experience details are available in the portfolio.'];
       let fontSize = 44, paragraphs;
       do {
-        ctx.font = `${fontSize}px sans-serif`;
+        ctx.font = `${fontSize}px Georgia, serif`;
         paragraphs = bullets.map(text => wrap(ctx, text, w - 170));
         if (y + paragraphs.reduce((sum, lines) => sum + lines.length * fontSize * 1.3 + 25, 0) < h - 65) break;
         fontSize--;

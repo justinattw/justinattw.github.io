@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createPhysicalObjects, cvTexture } from './physical-objects.js';
+import { createCat } from './cat.js';
 
 export function createRoom({ canvas, targets, onSelect, onReady, onError, onItemSelect = () => {}, jobs = [], projects = [], overview = false }) {
   const scene = new THREE.Scene();
@@ -307,9 +308,25 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   const clockFace = new THREE.Mesh(new THREE.CircleGeometry(.27, 40), material('#d2c19b'));
   clockFace.position.set(0, 5.9, -3.53);
   scene.add(clockFace);
-  box(0, 6, -3.51, .018, .2, .015, '#403b2d');
-  const hand = box(.065, 5.9, -3.5, .15, .018, .015, '#403b2d');
-  hand.rotation.z = .4;
+  const hourHand = new THREE.Group();
+  const minuteHand = new THREE.Group();
+  hourHand.position.set(0, 5.9, -3.51);
+  minuteHand.position.set(0, 5.9, -3.5);
+  scene.add(hourHand, minuteHand);
+  box(0, .065, 0, .022, .13, .015, '#403b2d', hourHand);
+  box(0, .1, 0, .014, .2, .015, '#403b2d', minuteHand);
+  const ukTime = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  });
+  function updateClock() {
+    const time = ukTime.format(new Date());
+    if (canvas.dataset.clockTime === time) return false;
+    const [hour, minute] = time.split(':').map(Number);
+    hourHand.rotation.z = -(hour % 12 + minute / 60) * Math.PI / 6;
+    minuteHand.rotation.z = -minute * Math.PI / 30;
+    canvas.dataset.clockTime = time;
+    return true;
+  }
   // Chandelier, with warm glass shades and a ceiling rose.
   cylinder(0, 7.86, .8, .5, .08, '#b6a57a', scene, .5, 32);
   cylinder(0, 6.9, .8, .035, 1.8, brass);
@@ -325,12 +342,19 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   chandelierLight.position.set(0, 6.2, .8);
   scene.add(chandelierLight);
   // Fern and a brass globe finish the corners without competing with navigation.
-  cylinder(5, .43, -.2, .4, .8, '#786147', scene, .52);
-  for (let i = 0; i < 12; i++) {
-    const angle = i * 2.4, r = .3 + random() * .3, h = 1 + random() * .7;
-    const leaf = sphere(5 + Math.cos(angle) * r, .8 + h * .65, -.2 + Math.sin(angle) * r, .12, h * .5, .06, i % 2 ? '#405a37' : '#627146');
-    leaf.rotation.z = Math.cos(angle) * .6;
+  function plant(x, y, z, size, potColor) {
+    cylinder(x, y + .25 * size, z, .25 * size, .5 * size, potColor, scene, .34 * size);
+    cylinder(x, y + .51 * size, z, .29 * size, .015, '#382d20');
+    for (let i = 0; i < 12; i++) {
+      const angle = i * 2.4, r = (.2 + random() * .25) * size, h = (.65 + random() * .55) * size;
+      const leaf = sphere(x + Math.cos(angle) * r, y + .5 * size + h * .65, z + Math.sin(angle) * r, .1 * size, h * .5, .055 * size, i % 2 ? '#405a37' : '#627146');
+      leaf.rotation.z = Math.cos(angle) * .6;
+    }
   }
+  plant(5, 0, -.2, 1.5, '#786147');
+  plant(-5.65, 0, -2.35, 1.8, '#806044');
+  plant(-3.15, 4.17, -3.2, .6, '#758477');
+  plant(1.7, 1.84, -2.45, .45, '#a27856');
   cylinder(-5, .5, -.2, .3, .9, walnut);
   cylinder(-5, .98, -.2, .65, .08, walnut);
   sphere(-5, 1.52, -.2, .4, .4, .4, '#7b8b73');
@@ -339,6 +363,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   meridian.rotation.z = -.3;
   scene.add(meridian);
   const physical = createPhysicalObjects({ box, surface, brass, pinboard, shelf, jobs, projects, schedule });
+  const cat = createCat({ scene, sphere, material });
 
   // Batch repeated static geometry without losing each destination's hit region.
   for (const root of [scene, ...scene.children.filter(child => child.isGroup)]) {
@@ -378,6 +403,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   const pointer = new THREE.Vector2();
   const rootTargets = [...targets.children];
   let frame = 0, lost = false, current = null, transition = null, activeItem = null;
+  let catTimer, lastRender;
   function home() {
     if (overview) {
       const aspect = canvas.clientWidth / canvas.clientHeight;
@@ -423,7 +449,14 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   applyView(home());
   function render(now = performance.now()) {
     frame = 0;
-    if (lost) return;
+    clearTimeout(catTimer);
+    if (lost || document.hidden) { lastRender = undefined; return; }
+    updateClock();
+    cat.root.visible = !current;
+    const catMoving = cat.root.visible && !reduced.matches;
+    cat.update(catMoving && lastRender !== undefined ? Math.min((now - lastRender) / 1000, .05) : 0);
+    lastRender = now;
+    canvas.dataset.catPosition = cat.root.position.toArray().map(value => value.toFixed(3)).join(',');
     const { width, height } = canvas.getBoundingClientRect();
     if (!width || !height) return;
     const objectMoving = physical.step(now, reduced.matches);
@@ -458,8 +491,8 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     canvas.dataset.item = activeItem ? `${activeItem.kind}-${activeItem.index}` : '';
     canvas.dataset.face = activeItem?.kind === 'job' ? (Math.abs(activeItem.root.rotation.y) < .1 ? 'front' : 'back') : '';
     canvas.dataset.moving = String(Boolean(transition) || objectMoving);
-    // Only animate during an intentional camera move; the idle room uses no loop.
     if (transition || objectMoving) schedule();
+    else if (catMoving) catTimer = setTimeout(schedule, 1000 / 30);
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(render); }
   function moveTo(id, override) {
@@ -530,15 +563,24 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
       render();
       resolve(true);
     }
+    schedule();
   });
   canvas.addEventListener('webglcontextlost', event => {
     event.preventDefault();
     lost = true;
+    clearInterval(clockTimer);
+    clearTimeout(catTimer);
     physical.cancel();
     if (transition) { transition.resolve(false); transition = null; }
     onError(new Error('WebGL context was lost.'));
   });
   canvas.addEventListener('webglcontextrestored', () => location.reload());
+  const clockTimer = setInterval(() => {
+    if (!document.hidden && !lost && updateClock()) schedule();
+  }, 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !lost) { lastRender = undefined; schedule(); }
+  });
   render();
   targets.hidden = false;
   onReady();
@@ -579,6 +621,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     schedule();
   }
   function setStyle(style) {
+    canvas.dataset.style = style.id;
     walnut.color.set(style.wood);
     brass.color.set(style.trim);
     leather.color.set(style.leather);

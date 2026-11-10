@@ -29,10 +29,14 @@ npm test
 ```
 
 Vite builds the static site to `dist/`. Three.js renders the procedural room,
-with no downloaded models or image assets. Rendering happens on demand, not in
-a continuous idle animation loop. The display caps pixel density at 2; reduced
-motion makes destination changes immediate instead of moving the camera.
+with no downloaded models or image assets. Potted plants and a wandering cat
+bring the room to life. The cat animates at up to 30 frames per second in the
+room overview, pausing in close-ups and hidden tabs. Otherwise rendering happens
+on demand. The display caps pixel density at 2; reduced motion keeps the cat
+still and makes destination changes immediate instead of moving the camera.
 Fonts are local system fonts; the deployed site makes no external asset requests.
+The wall clock follows UK time (`Europe/London`), including GMT/BST changes.
+It refreshes each minute and when the page becomes visible again.
 
 ## Updating content
 
@@ -54,7 +58,8 @@ The intended URL is <https://justinattw.github.io>.
 
 ## Temporary interior chooser
 
-`/styles.html` compares six palettes and finishes in the same room. It does not
-change the default portfolio. The selection is encoded in the shareable URL;
-following its preview link applies that style with `?style=<id>`. There is no
+`/styles.html` offers six palettes and finishes in the same room. Clicking a
+style opens the portfolio immediately with that style applied. It does not
+change the default portfolio. The selection is encoded in the shareable URL
+as `?style=<id>`. There is no
 account, backend or tracking. Styles are defined in `src/styles.js`.

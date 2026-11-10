@@ -20,8 +20,9 @@ h1, h2 { font-family: Georgia, serif; font-weight: 400; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .skip-link { position: fixed; top: -80px; left: 20px; z-index: 20; background: var(--paper); color: var(--ink); padding: 14px; }
 .skip-link:focus { top: 12px; }
-.masthead { position: fixed; top: 0; left: 0; right: 0; z-index: 3; padding: 25px 35px; display: flex; align-items: center; justify-content: flex-end; background: linear-gradient(#101814b3, transparent); pointer-events: none; }
+.masthead { position: fixed; top: 0; left: 0; right: 0; z-index: 3; padding: 25px 35px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(#101814b3, transparent); pointer-events: none; }
 .masthead a { pointer-events: auto; }
+.monogram { font: italic 30px Georgia, serif; letter-spacing: -.08em; color: var(--gold); }
 .github-link { font-size: 11px; opacity: .8; }
 .github-link span { padding-left: 12px; }
 .study { position: relative; }
@@ -57,6 +58,7 @@ body[data-destination] #plain-toggle { visibility: hidden; }
 .simple { background: var(--paper); color: var(--ink); }
 .simple .study { display: none; }
 .simple .masthead { position: static; background: none; }
+.simple .monogram { color: #6f794e; }
 .simple .explore-nav { position: static; transform: none; justify-content: center; border: 0; background: #253e31; border-radius: 0; color: var(--paper); }
 .simple footer { position: static; text-align: center; padding: 25px; }
 .no-webgl .simple .study { display: block; }

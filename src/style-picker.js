@@ -9,7 +9,7 @@ let selected = interiorStyles.find(style => style.id === new URLSearchParams(loc
 function choose(style) {
   selected = style;
   room?.setStyle(style);
-  for (const button of options.children) button.setAttribute('aria-pressed', String(button.dataset.style === style.id));
+  for (const option of options.children) option.setAttribute('aria-current', String(option.dataset.style === style.id));
   document.querySelector('#preview-name').textContent = style.name;
   const link = document.querySelector('#choose-style');
   link.textContent = `Try ${style.name} in the portfolio ↗`;
@@ -18,11 +18,11 @@ function choose(style) {
 }
 
 for (const style of interiorStyles) {
-  const button = document.createElement('button');
-  button.type = 'button';
+  const button = document.createElement('a');
+  button.href = `./?style=${style.id}`;
   button.className = 'style-option';
   button.dataset.style = style.id;
-  button.setAttribute('aria-pressed', String(style.id === selected.id));
+  button.setAttribute('aria-current', String(style.id === selected.id));
   const swatches = document.createElement('span');
   swatches.className = 'swatches';
   swatches.setAttribute('aria-hidden', 'true');
@@ -38,7 +38,6 @@ for (const style of interiorStyles) {
   note.textContent = style.note;
   copy.append(name, note);
   button.append(swatches, copy);
-  button.addEventListener('click', () => choose(style));
   options.append(button);
 }
 

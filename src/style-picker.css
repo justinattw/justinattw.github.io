@@ -16,8 +16,8 @@ aside { padding: 40px 25px; border-left: 1px solid #a68e6333; }
 h1 { font: 36px/1.1 Georgia, serif; letter-spacing: -.025em; margin: 0 0 18px; }
 .intro { font-size: 12px; line-height: 1.8; color: #aeaF9e; margin-bottom: 25px; }
 #style-options { display: grid; gap: 9px; }
-.style-option { display: flex; align-items: center; gap: 13px; text-align: left; width: 100%; border: 1px solid #b5a27c38; background: transparent; padding: 13px; border-radius: 5px; cursor: pointer; color: inherit; font: inherit; }
-.style-option[aria-pressed="true"] { border-color: #cab382; background: #bda77715; }
+.style-option { display: flex; align-items: center; gap: 13px; text-align: left; width: 100%; border: 1px solid #b5a27c38; background: transparent; padding: 13px; border-radius: 5px; cursor: pointer; color: inherit; font: inherit; text-decoration: none; }
+.style-option[aria-current="true"] { border-color: #cab382; background: #bda77715; }
 .style-option:hover { background: #d3b97f12; }
 .swatches { display: flex; width: 42px; height: 36px; border-radius: 3px; overflow: hidden; flex-shrink: 0; }
 .swatches i { flex: 1; }

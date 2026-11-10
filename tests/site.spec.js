@@ -1,5 +1,41 @@
 import { test, expect } from '@playwright/test';
 
+test('cat walks around the room and respects reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(page.locator('#room-targets')).toBeVisible();
+  const room = page.locator('#room');
+  const resting = await room.getAttribute('data-cat-position');
+  await page.waitForTimeout(300);
+  await expect(room).toHaveAttribute('data-cat-position', resting);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect.poll(() => room.getAttribute('data-cat-position')).not.toBe(resting);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForTimeout(100);
+  const stopped = await room.getAttribute('data-cat-position');
+  await page.waitForTimeout(300);
+  await expect(room).toHaveAttribute('data-cat-position', stopped);
+});
+
+test('wall clock follows UK time, ticks and observes British Summer Time', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, timezoneId: 'America/Los_Angeles', reducedMotion: 'reduce' });
+  try {
+    const page = await context.newPage();
+    await page.clock.install({ time: new Date('2026-11-10T12:45:00Z') });
+    await page.clock.pauseAt(new Date('2026-11-10T12:45:59Z'));
+    await page.goto('/');
+    await expect(page.locator('#room-targets')).toBeVisible();
+    await expect(page.locator('#room')).toHaveAttribute('data-clock-time', '12:45');
+    await page.clock.runFor(1000);
+    await expect(page.locator('#room')).toHaveAttribute('data-clock-time', '12:46');
+    await page.clock.setSystemTime(new Date('2026-07-10T12:45:59Z'));
+    await page.clock.runFor(1000);
+    await expect(page.locator('#room')).toHaveAttribute('data-clock-time', '13:46');
+  } finally {
+    await context.close();
+  }
+});
+
 async function enter(page, id) {
   await page.locator(`.explore-nav a[href="#${id}"]`).click();
   await expect(page.locator('#room')).toHaveAttribute('data-view', id);
@@ -13,7 +49,8 @@ test('room destinations move the camera without opening popups', async ({ page }
   await page.goto('/');
   await expect(page.locator('#room-targets')).toBeVisible();
   await expect(page.locator('.masthead')).not.toContainText('JUSTIN WONG');
-  await expect(page.locator('.masthead a')).toHaveText('GitHub ↗');
+  await expect(page.locator('.masthead .monogram')).toHaveText('jw.');
+  await expect(page.locator('.masthead .github-link')).toHaveText('GitHub ↗');
   for (const id of ['work', 'cv', 'projects']) {
     const target = page.locator(`[data-anchor="${id}"]`);
     await target.click();

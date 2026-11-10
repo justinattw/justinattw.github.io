@@ -2,11 +2,15 @@
 Personal portfolio and CV, presented as an interactive 3D study.
 
 An immersive, front-facing Victorian study with tall arched windows, walnut
-panelling and a retro computer. Selecting the shelf, computer or pinboard moves
-the camera towards it before opening projects, a conventional CV or employee-style
-work-history cards. The CV does not reuse the pinboard's access-card presentation.
-Mouse, touch and keyboard all work. Plain HTML remains available without
-JavaScript or WebGL, with a simple-view toggle and printable public CV.
+panelling and a retro computer. The camera moves towards each destination.
+Lanyard cards have playful, procedurally drawn company emblems and flip to reveal
+the role's details. Titled books pull off the shelf and open to project notes.
+The CV pages directly on the monitor. There are no popup panels.
+
+Mouse, touch and keyboard all work. Escape or the back button returns one level.
+Plain HTML remains available without JavaScript or WebGL, with a simple-view
+toggle and printable public CV. The company emblems are original playful
+representations, not official brand assets or access credentials.
 
 ## Development
 
@@ -31,9 +35,10 @@ Fonts are local system fonts; the deployed site makes no external asset requests
 
 ## Updating content
 
-Edit the semantic sections in `index.html`. The same content is used for the
-simple view, interactive panels and printable CV. `src/room.js` defines the room
-and its destinations. `src/style.css` includes responsive and print layouts.
+Edit the semantic sections in `index.html`. The same content supplies the physical
+objects, screen-reader descriptions, simple view and printable CV.
+`src/room.js` defines the room and camera; `src/physical-objects.js` builds and
+animates the cards and books. `src/style.css` includes responsive and print layouts.
 
 Do not add private contact or visa details, source résumé files, unpublished
 results or invented project metrics. Future ideas must stay explicitly labelled

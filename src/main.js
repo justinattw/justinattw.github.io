@@ -1,138 +1,178 @@
 const content = document.querySelector('#content');
-const dialog = document.querySelector('#detail-dialog');
-const dialogContent = document.querySelector('#dialog-content');
 const toggle = document.querySelector('#plain-toggle');
-const validSections = new Set(['cv', 'work', 'projects']);
-let lastTrigger, room;
-let simple = false;
-let navigation = 0;
-let handledCloseEvents = 0;
-
-function cloneSection(id) {
-  const section = document.getElementById(id).cloneNode(true);
-  for (const element of [section, ...section.querySelectorAll('*')]) {
-    if (element.id) element.id = `detail-${element.id}`;
-    if (element.hasAttribute('aria-labelledby')) element.setAttribute('aria-labelledby', `detail-${element.getAttribute('aria-labelledby')}`);
+const controls = document.querySelector('#scene-controls');
+const backButton = document.querySelector('#scene-back');
+const actions = document.querySelector('#scene-actions');
+const reader = document.querySelector('#scene-reader');
+const status = document.querySelector('#scene-status');
+const sections = new Set(['cv', 'work', 'projects']);
+const jobs = [...document.querySelectorAll('#work .badge-body')].map(badge => ({
+  company: badge.querySelector('h3').textContent,
+  role: badge.querySelector('.role-detail').textContent,
+  dates: badge.querySelector('.dates').textContent,
+  bullets: [...badge.querySelectorAll('li')].map(item => item.textContent),
+}));
+const projects = [...document.querySelectorAll('#projects .project-card')].map(project => ({
+  title: project.querySelector('h3').textContent,
+  description: project.querySelector('.project-copy > p').textContent,
+  note: project.querySelector('.honest-note').textContent,
+}));
+function cvPagesFor(title, paragraphs) {
+  const lines = [];
+  for (const paragraph of paragraphs) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/)) {
+      if (line && `${line} ${word}`.length > 24) { lines.push(line); line = word; }
+      else line = line ? `${line} ${word}` : word;
+    }
+    if (line) lines.push(line);
   }
-  return section;
+  const pages = [];
+  for (let index = 0; index < lines.length; index += 6) pages.push(`${title}\n${lines.slice(index, index + 6).join('\n')}`);
+  return pages;
 }
-
-function cvExperience() {
-  const section = document.createElement('section');
-  section.className = 'cv-experience';
-  const heading = document.createElement('h3');
-  heading.textContent = 'Experience';
-  section.append(heading);
-  for (const badge of document.querySelectorAll('#work .badge-body')) {
-    const role = document.createElement('article');
-    role.className = 'resume-role';
-    for (const selector of ['h3', '.role-detail', '.dates', 'ul']) role.append(badge.querySelector(selector).cloneNode(true));
-    section.append(role);
-  }
-  return section;
-}
+const cvPages = [
+  ...cvPagesFor('JUSTIN WONG', ['Software engineer', 'GitHub Notifications', 'github.com/justinattw']),
+  ...jobs.flatMap(job => cvPagesFor(job.company, [job.role, job.dates, job.bullets[0]])),
+  ...[...document.querySelectorAll('#cv .education')].flatMap(education => cvPagesFor(education.querySelector('h3').textContent, [education.querySelector('p').innerText, ...[...education.querySelectorAll('div > *')].map(element => element.textContent)])),
+];
+let room, section, selected, lastTrigger;
+let simple = false, navigation = 0, cvPage = 0;
 
 function setSimple(value) {
   simple = value;
+  if (value) {
+    navigation++;
+    section = null;
+    selected = null;
+    delete document.body.dataset.destination;
+    room?.reset();
+  }
   document.body.classList.toggle('simple', value);
   content.classList.toggle('simple-view', value);
   toggle.textContent = value ? 'Room view' : 'Simple view';
+  controls.hidden = value || !section;
 }
-
+function setHash(value) {
+  history.replaceState(null, '', location.pathname + location.search + (value ? `#${value}` : ''));
+}
+function showCVPage(index) {
+  cvPage = (index + cvPages.length) % cvPages.length;
+  room?.showCV(cvPages[cvPage], cvPage, cvPages.length);
+  reader.textContent = cvPages[cvPage];
+  const position = document.querySelector('#cv-position');
+  if (position) position.textContent = `${cvPage + 1} / ${cvPages.length}`;
+}
+function showControls() {
+  controls.hidden = !section;
+  backButton.textContent = selected ? (section === 'work' ? '← Pinboard' : '← Shelf') : '← Room';
+  actions.replaceChildren();
+  if (section !== 'cv') return;
+  const previous = document.createElement('button');
+  previous.type = 'button'; previous.textContent = '←'; previous.setAttribute('aria-label', 'Previous CV page');
+  previous.addEventListener('click', () => showCVPage(cvPage - 1));
+  const position = document.createElement('span');
+  position.id = 'cv-position';
+  position.textContent = `${cvPage + 1} / ${cvPages.length}`;
+  const next = document.createElement('button');
+  next.type = 'button'; next.textContent = '→'; next.setAttribute('aria-label', 'Next CV page');
+  next.addEventListener('click', () => showCVPage(cvPage + 1));
+  const print = document.createElement('button');
+  print.type = 'button'; print.textContent = 'Print CV';
+  print.addEventListener('click', () => window.print());
+  actions.append(previous, position, next, print);
+}
 async function openSection(id, trigger = document.activeElement) {
-  if (!validSections.has(id)) return;
-  if (simple || typeof dialog.showModal !== 'function') {
-    document.getElementById(id).scrollIntoView();
-    return;
-  }
+  if (!sections.has(id)) return;
+  if (simple) { document.getElementById(id).scrollIntoView(); return; }
   const token = ++navigation;
   lastTrigger = trigger;
+  selected = null;
   document.body.dataset.destination = id;
   await roomReady;
-  if (token !== navigation || simple) return;
-  if (room && !await room.focus(id)) return;
-  if (token !== navigation) return;
-  const section = cloneSection(id);
-  if (id === 'cv') section.append(cvExperience());
-  dialogContent.replaceChildren(section);
-  dialog.dataset.section = id;
-  dialog.setAttribute('aria-labelledby', `detail-${id}-title`);
-  if (!dialog.open) dialog.showModal();
-  dialog.scrollTop = 0;
+  if (token !== navigation || simple || !room) return;
+  if (!await room.focus(id) || token !== navigation) return;
+  section = id;
+  showControls();
+  if (id === 'cv') showCVPage(0);
+  else reader.textContent = id === 'work' ? 'Choose a lanyard card. Each card flips over to show the full role.' : 'Choose a titled book to open that project.';
 }
-
-function navigate(id, trigger) {
-  if (!validSections.has(id)) return;
-  history.pushState(null, '', `#${id}`);
-  openSection(id, trigger);
-}
-
-async function returnToRoom() {
+async function selectItem(kind, index, updateHistory = true) {
+  if (kind === 'cv') { showCVPage(cvPage + 1); return; }
+  if (kind === 'book' && selected?.kind === kind && selected.index === index) return back();
   const token = ++navigation;
-  delete document.body.dataset.destination;
-  if (room) await room.reset();
-  if (token !== navigation) return;
-  if (lastTrigger instanceof HTMLElement) lastTrigger.focus({ preventScroll: true });
+  const alreadySelected = selected?.kind === kind && selected.index === index;
+  selected = { kind, index };
+  if (!alreadySelected && updateHistory) history.pushState(null, '', `#${section}/${kind}-${index}`);
+  if (!await room.selectItem(kind, index) || token !== navigation) return;
+  showControls();
+  const data = kind === 'job' ? jobs[index] : projects[index];
+  reader.textContent = kind === 'job'
+    ? `${data.company}. ${data.role}. ${data.dates}. ${data.bullets.join(' ')}`
+    : `${data.title}. ${data.description} ${data.note}`;
 }
-
-function closeDetail(clearHash = true) {
-  if (clearHash && validSections.has(location.hash.slice(1))) history.replaceState(null, '', location.pathname + location.search);
-  if (dialog.open) {
-    handledCloseEvents++;
-    dialog.close();
+async function back() {
+  const token = ++navigation;
+  const item = selected;
+  selected = null;
+  if (item) {
+    setHash(section);
+    await room?.back();
+    if (token !== navigation) return;
+    showControls();
+    document.querySelector(`[data-kind="${item.kind}"][data-index="${item.index}"]`)?.focus({ preventScroll: true });
+  } else {
+    setHash('');
+    section = null;
+    controls.hidden = true;
+    delete document.body.dataset.destination;
+    await room?.reset();
+    if (token !== navigation) return;
+    lastTrigger?.focus?.({ preventScroll: true });
   }
-  returnToRoom();
 }
 
-if (typeof dialog.showModal === 'function') {
-  document.documentElement.classList.add('enhanced');
-  toggle.hidden = false;
-  document.querySelectorAll('[data-print]').forEach(button => { button.hidden = false; });
-  document.addEventListener('click', event => {
-    const link = event.target.closest('a[href^="#"]');
-    if (link && validSections.has(link.hash.slice(1)) && !simple) {
-      event.preventDefault();
-      navigate(link.hash.slice(1), link);
+document.documentElement.classList.add('enhanced');
+toggle.hidden = false;
+document.querySelectorAll('[data-print]').forEach(button => { button.hidden = false; });
+document.addEventListener('click', event => {
+  const link = event.target.closest('a[href^="#"]');
+  if (link && sections.has(link.hash.slice(1)) && !simple) {
+    event.preventDefault();
+    history.pushState(null, '', link.hash);
+    openSection(link.hash.slice(1), link);
+  }
+  if (link?.hash === '#content' && !simple) setSimple(true);
+  if (event.target.closest('[data-print]')) window.print();
+});
+backButton.addEventListener('click', back);
+window.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && document.body.dataset.destination) back();
+  if (section === 'cv' && event.key === 'ArrowRight') showCVPage(cvPage + 1);
+  if (section === 'cv' && event.key === 'ArrowLeft') showCVPage(cvPage - 1);
+});
+window.addEventListener('popstate', async () => {
+  const [id, item] = location.hash.slice(1).split('/');
+  if (!sections.has(id)) {
+    selected = null;
+    await back();
+    return;
+  }
+  await openSection(id);
+  if (item) {
+    const [kind, index] = item.split('-');
+    if ((kind === 'job' && id === 'work' && jobs[Number(index)]) || (kind === 'book' && id === 'projects' && projects[Number(index)])) {
+      await selectItem(kind, Number(index), false);
     }
-    if (link?.hash === '#content' && !simple) setSimple(true);
-    if (event.target.closest('[data-print]')) window.print();
-  });
-  document.querySelector('#close-dialog').addEventListener('click', () => closeDetail());
-  dialog.addEventListener('cancel', event => { event.preventDefault(); closeDetail(); });
-  dialog.addEventListener('click', event => {
-    if (event.target !== dialog) return;
-    const bounds = dialog.getBoundingClientRect();
-    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeDetail();
-  });
-  dialog.addEventListener('close', () => {
-    if (handledCloseEvents) { handledCloseEvents--; return; }
-    if (validSections.has(location.hash.slice(1))) history.replaceState(null, '', location.pathname + location.search);
-    returnToRoom();
-  });
-  window.addEventListener('popstate', () => {
-    const id = location.hash.slice(1);
-    if (validSections.has(id)) openSection(id);
-    else if (dialog.open) closeDetail(false);
-    else returnToRoom();
-  });
-  window.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !dialog.open && document.body.dataset.destination) {
-      history.replaceState(null, '', location.pathname + location.search);
-      returnToRoom();
-    }
-  });
-  toggle.addEventListener('click', () => {
-    navigation++;
-    setSimple(!simple);
-    if (simple) {
-      delete document.body.dataset.destination;
-      room?.reset();
-      content.focus({ preventScroll: true });
-    }
-  });
-}
-
-const status = document.querySelector('#scene-status');
+  }
+});
+toggle.addEventListener('click', () => {
+  navigation++;
+  setSimple(!simple);
+  if (simple) {
+    content.focus({ preventScroll: true });
+  }
+});
 function fallback(error) {
   console.error('Unable to render the study:', error);
   room = undefined;
@@ -142,24 +182,28 @@ function fallback(error) {
   status.textContent = '3D is unavailable. Use the simple view below.';
   setSimple(true);
 }
+const roomReady = import('./room.js').then(({ createRoom }) => {
+  room = createRoom({
+    canvas: document.querySelector('#room'),
+    targets: document.querySelector('#room-targets'),
+    jobs, projects,
+    onSelect: id => {
+      history.pushState(null, '', `#${id}`);
+      openSection(id, document.querySelector(`[data-anchor="${id}"]`));
+    },
+    onItemSelect: selectItem,
+    onReady: () => { status.hidden = true; },
+    onError: fallback,
+  });
+  const styleId = new URLSearchParams(location.search).get('style');
+  if (styleId) import('./styles.js').then(({ interiorStyles }) => {
+    const style = interiorStyles.find(style => style.id === styleId);
+    if (style) room?.setStyle(style);
+  }).catch(error => console.error('Unable to apply interior style:', error));
+}).catch(fallback);
 
-const roomReady = import('./room.js')
-  .then(({ createRoom }) => {
-    room = createRoom({
-      canvas: document.querySelector('#room'),
-      targets: document.querySelector('#room-targets'),
-      onSelect: id => navigate(id, document.querySelector(`[data-anchor="${id}"]`)),
-      onReady: () => { status.hidden = true; },
-      onError: fallback,
-    });
-    const styleId = new URLSearchParams(location.search).get('style');
-    if (styleId) {
-      import('./styles.js').then(({ interiorStyles }) => {
-        const style = interiorStyles.find(style => style.id === styleId);
-        if (style) room?.setStyle(style);
-      }).catch(error => console.error('Unable to apply interior style:', error));
-    }
-  })
-  .catch(fallback);
-
-if (validSections.has(location.hash.slice(1))) openSection(location.hash.slice(1));
+const initial = location.hash.slice(1).split('/')[0];
+if (sections.has(initial)) openSection(initial).then(async () => {
+  const [kind, index] = (location.hash.slice(1).split('/')[1] || '').split('-');
+  if ((kind === 'job' && initial === 'work' && jobs[Number(index)]) || (kind === 'book' && initial === 'projects' && projects[Number(index)])) await selectItem(kind, Number(index), false);
+});

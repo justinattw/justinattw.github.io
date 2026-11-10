@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { createPhysicalObjects, cvTexture } from './physical-objects.js';
 
-export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
+export function createRoom({ canvas, targets, onSelect, onReady, onError, onItemSelect = () => {}, jobs = [], projects = [], overview = false }) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#161d19');
   scene.fog = new THREE.FogExp2('#161d19', .012);
@@ -241,10 +242,6 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
     box(x, y + h / 2, -2.8, .16, h, .42, books[(i + row) % books.length], shelf);
     for (const band of [.15, .75]) box(x, y + h * band, -2.58, .12, .018, .013, brass, shelf);
   }
-  box(-3.64, 1.43, -2.78, .6, .4, .5, '#b4ad94', shelf);
-  label('>_ runtime', -3.64, 1.45, -2.518, .47, .23, { background: '#142c26', foreground: '#b0c58e', size: 48 }, shelf);
-  box(-2.75, 1.55, -2.78, .57, .7, .035, '#e2d3ac', shelf);
-  label('MOMENTUM\nFIELD NOTES\n________', -2.75, 1.55, -2.755, .51, .64, { size: 40 }, shelf);
 
   // Carved writing desk, inset leather top, turned legs and drawer pulls.
   box(0, 1.64, -1.85, 3.9, .18, 1.8, walnut);
@@ -266,7 +263,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
   box(0, 2.09, -2.1, .19, .3, .22, '#c3bda1', computer);
   box(0, 2.59, -2.05, 1.55, 1.12, .81, '#cec6aa', computer);
   box(0, 2.62, -1.626, 1.3, .84, .07, '#727d68', computer);
-  label('JUSTIN WONG\nSOFTWARE ENGINEER\n\n> read cv.txt _', 0, 2.65, -1.583, 1.16, .7, { background: '#102d24', foreground: '#b5cda0', size: 30, scanlines: true }, computer);
+  const screen = label('JUSTIN WONG\nSOFTWARE ENGINEER\n\n> read cv.txt _', 0, 2.65, -1.583, 1.16, .7, { background: '#102d24', foreground: '#b5cda0', size: 30, scanlines: true }, computer);
   const screenLight = new THREE.PointLight('#9dce99', .35, 2);
   screenLight.position.set(0, 2.6, -1.3);
   scene.add(screenLight);
@@ -301,9 +298,6 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
     const x = 2.49 + (i % 3) * .63, y = i < 3 ? 3.53 : 2.8;
     sphere(x, y + .17, -3.49, .028, .028, .025, brass, pinboard);
     for (const dx of [-.055, .055]) box(x + dx, y, -3.48, .025, .3, .018, badges[i], pinboard);
-    box(x, y - .26, -3.44, .42, .52, .035, '#e7dcc1', pinboard);
-    box(x, y - .08, -3.413, .42, .075, .015, badges[i], pinboard);
-    label(`${['GITHUB', 'TRADINGHUB', 'CORESTREAM', 'UCL', 'NUVEEN'][i]}\nJUSTIN WONG\n||| || |||`, x, y - .29, -3.413, .36, .3, { size: 35, foreground: badges[i] }, pinboard);
   }
   // Gilt picture frame and a small pendulum clock above the desk.
   box(0, 4.7, -3.69, 1.9, 1.45, .12, walnut);
@@ -344,6 +338,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
   meridian.position.set(-5, 1.52, -.2);
   meridian.rotation.z = -.3;
   scene.add(meridian);
+  const physical = createPhysicalObjects({ box, surface, brass, pinboard, shelf, jobs, projects, schedule });
 
   // Batch repeated static geometry without losing each destination's hit region.
   for (const root of [scene, ...scene.children.filter(child => child.isGroup)]) {
@@ -373,7 +368,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
     work: new THREE.Vector3(2.77, 3.03, -3.4),
   };
   const views = {
-    projects: { position: [-3.15, 2.38, 1.25], target: [-3.15, 2.3, -2.85] },
+    projects: { position: [-3.15, 1.8, .8], target: [-3.15, 1.8, -2.85] },
     cv: { position: [0, 2.65, .65], target: [0, 2.6, -1.7] },
     work: { position: [2.77, 3.03, .1], target: [2.77, 3.03, -3.5] },
   };
@@ -381,8 +376,14 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
-  let frame = 0, lost = false, current = null, transition = null;
+  const rootTargets = [...targets.children];
+  let frame = 0, lost = false, current = null, transition = null, activeItem = null;
   function home() {
+    if (overview) {
+      const aspect = canvas.clientWidth / canvas.clientHeight;
+      const fov = canvas.clientWidth < 650 ? 55 : 48;
+      return { position: [0, 3.8, Math.max(8.4, 13 / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect) - 3.5)], target: [0, 3.3, -3.5] };
+    }
     return canvas.clientWidth < 650
       ? { position: [0, 3.3, 14], target: [0, 3, -3.5] }
       : { position: [0, 3.1, 8.4], target: [0, 3.3, -3.5] };
@@ -401,12 +402,31 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
     }
     return view;
   }
+  function updateTargets() {
+    if (!current) targets.replaceChildren(...rootTargets);
+    else {
+      const kind = current === 'work' ? 'job' : 'book';
+      const items = activeItem ? (activeItem.kind === 'job' ? [activeItem] : []) : current === 'cv' ? [] : physical.items.filter(item => item.kind === kind);
+      targets.replaceChildren(...items.map(item => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'artifact-target';
+        button.dataset.kind = item.kind;
+        button.dataset.index = item.index;
+        button.setAttribute('aria-label', `${item.kind === 'job' ? 'Flip' : 'Open'} ${item.name}`);
+        button.addEventListener('click', () => onItemSelect(item.kind, item.index));
+        return button;
+      }));
+    }
+    targets.hidden = targets.childElementCount === 0;
+  }
   applyView(home());
   function render(now = performance.now()) {
     frame = 0;
     if (lost) return;
     const { width, height } = canvas.getBoundingClientRect();
     if (!width || !height) return;
+    const objectMoving = physical.step(now, reduced.matches);
     if (canvas.width !== Math.round(width * renderer.getPixelRatio()) || canvas.height !== Math.round(height * renderer.getPixelRatio())) renderer.setSize(width, height, false);
     camera.aspect = width / height;
     if (!transition) camera.fov = width < 650 && !current ? 55 : 48;
@@ -419,7 +439,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
       if (t === 1) {
         const resolve = transition.resolve;
         transition = null;
-        if (!current) targets.hidden = false;
+        updateTargets();
         resolve(true);
       }
     }
@@ -429,26 +449,29 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
     renderer.render(scene, camera);
     renderer.shadowMap.autoUpdate = false;
     for (const element of targets.children) {
-      const point = anchors[element.dataset.anchor].clone().project(camera);
+      const item = element.dataset.kind && physical.items.find(item => item.kind === element.dataset.kind && item.index === Number(element.dataset.index));
+      const point = item ? item.root.getWorldPosition(new THREE.Vector3()).project(camera) : anchors[element.dataset.anchor].clone().project(camera);
       element.style.left = `${THREE.MathUtils.clamp((point.x + 1) * 50, 8, 92)}%`;
       element.style.top = `${THREE.MathUtils.clamp((1 - point.y) * 50, 15, 85)}%`;
     }
     canvas.dataset.view = current || 'room';
-    canvas.dataset.moving = String(Boolean(transition));
+    canvas.dataset.item = activeItem ? `${activeItem.kind}-${activeItem.index}` : '';
+    canvas.dataset.face = activeItem?.kind === 'job' ? (Math.abs(activeItem.root.rotation.y) < .1 ? 'front' : 'back') : '';
+    canvas.dataset.moving = String(Boolean(transition) || objectMoving);
     // Only animate during an intentional camera move; the idle room uses no loop.
-    if (transition) schedule();
+    if (transition || objectMoving) schedule();
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(render); }
-  function moveTo(id) {
+  function moveTo(id, override) {
     if (transition) transition.resolve(false);
     current = id;
-    const view = viewFor(id);
+    const view = override || viewFor(id);
     targets.hidden = true;
     if (reduced.matches) {
       transition = null;
       applyView(view);
+      updateTargets();
       render();
-      targets.hidden = Boolean(id);
       return Promise.resolve(true);
     }
     return new Promise(resolve => {
@@ -466,7 +489,10 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
     pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
     let node = raycaster.intersectObjects(scene.children, true)[0]?.object;
-    while (node && !node.userData.destination) node = node.parent;
+    while (node && !node.userData.destination) {
+      if (current && node.userData.interaction) return node.userData.interaction;
+      node = node.parent;
+    }
     return node?.userData.destination;
   }
   let down;
@@ -476,19 +502,21 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
     if (!down) return;
     const distance = Math.hypot(event.clientX - down.x, event.clientY - down.y);
     down = undefined;
-    if (distance > 12 || current) return;
+    if (distance > 12 || transition) return;
     const id = pick(event);
-    if (id) onSelect(id);
+    if (current === 'cv' && id === 'cv') onItemSelect('cv', 1);
+    else if (typeof id === 'string' && !current) onSelect(id);
+    else if (id && typeof id === 'object') onItemSelect(id.kind, id.index);
   });
   canvas.addEventListener('pointermove', event => {
-    if (event.pointerType === 'mouse') canvas.style.cursor = !current && pick(event) ? 'pointer' : '';
+    if (event.pointerType === 'mouse') canvas.style.cursor = pick(event) ? 'pointer' : '';
   });
   canvas.addEventListener('pointerleave', () => { down = undefined; });
   window.addEventListener('resize', () => {
     const resolve = transition?.resolve;
     transition = null;
-    applyView(viewFor(current));
-    targets.hidden = Boolean(current);
+    applyView(activeItem ? itemView(activeItem) : viewFor(current));
+    updateTargets();
     resolve?.(true);
     schedule();
   });
@@ -498,14 +526,15 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
       camera.position.copy(toPosition);
       look.copy(toLook);
       transition = null;
+      updateTargets();
       render();
-      targets.hidden = Boolean(current);
       resolve(true);
     }
   });
   canvas.addEventListener('webglcontextlost', event => {
     event.preventDefault();
     lost = true;
+    physical.cancel();
     if (transition) { transition.resolve(false); transition = null; }
     onError(new Error('WebGL context was lost.'));
   });
@@ -513,6 +542,42 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
   render();
   targets.hidden = false;
   onReady();
+  function itemView(item) {
+    const target = item.stage.clone();
+    if (item.kind === 'job') target.x -= .35;
+    const width = item.kind === 'job' ? 2.65 : 3.9;
+    const height = item.kind === 'job' ? 4.1 : 3;
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+    const distance = Math.max(height, width / aspect) / (2 * Math.tan(THREE.MathUtils.degToRad(24)));
+    return { position: [target.x, target.y, target.z + distance], target: target.toArray() };
+  }
+  async function selectItem(kind, index) {
+    const item = physical.items.find(item => item.kind === kind && item.index === index);
+    if (!item || transition) return false;
+    if (activeItem === item && kind === 'job') return physical.flip(item, reduced.matches);
+    activeItem = item;
+    return (await Promise.all([physical.animate(item, true, reduced.matches), moveTo(current, itemView(item))])).every(Boolean);
+  }
+  async function back() {
+    if (!activeItem) return moveTo(null);
+    const item = activeItem;
+    activeItem = null;
+    return (await Promise.all([physical.animate(item, false, reduced.matches), moveTo(current)])).every(Boolean);
+  }
+  async function focus(id) {
+    if (activeItem) {
+      const item = activeItem;
+      activeItem = null;
+      await physical.animate(item, false, true);
+    }
+    return moveTo(id);
+  }
+  function showCV(text, page, total) {
+    const previous = screen.material.map;
+    screen.material.map = cvTexture(surface, text, page, total);
+    previous.dispose();
+    schedule();
+  }
   function setStyle(style) {
     walnut.color.set(style.wood);
     brass.color.set(style.trim);
@@ -532,5 +597,5 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError }) {
     renderer.shadowMap.needsUpdate = true;
     schedule();
   }
-  return { focus: id => moveTo(id), reset: () => moveTo(null), setStyle };
+  return { focus, back, selectItem, showCV, reset: () => focus(null), setStyle };
 }

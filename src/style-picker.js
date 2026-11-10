@@ -46,6 +46,7 @@ try {
   room = createRoom({
     canvas: document.querySelector('#room'),
     targets: document.querySelector('#room-targets'),
+    overview: true,
     onSelect: () => {},
     onReady: () => { status.hidden = true; },
     onError: error => {

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ece8de">
+    <meta name="description" content="Justin Wong's personal study: software engineering, work history, education and projects in an interactive 3D room.">
+    <title>Justin Wong · The study</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/src/style.css">
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to portfolio content</a>
+    <header class="masthead">
+      <a class="identity" href="./" aria-label="Justin Wong, home"><span class="monogram">jw.</span><span>JUSTIN WONG<span class="identity-sub">A PERSONAL SPACE ON THE INTERNET</span></span></a>
+      <a class="github-link" href="https://github.com/justinattw" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </header>
+    <main>
+      <section class="study" aria-labelledby="welcome">
+        <noscript><style>.room-wrap{display:none}.intro{position:relative;padding-bottom:30px}.room-caption{margin-top:45px}</style><p class="noscript-note">The room needs JavaScript. Your CV, work history and projects are available below.</p></noscript>
+        <div class="intro"><p class="eyebrow"><span class="status-dot"></span> MAKE YOURSELF AT HOME</p><h1 id="welcome">A little room.<br>A few things <em>I've done.</em></h1><p>I'm Justin, a software engineer.<br>Welcome to my study. Have a look around.</p></div>
+        <div class="room-wrap">
+          <canvas id="room" aria-label="An interactive 3D study: project bookshelf on the left, CV computer in the centre and work-history pinboard on the right."></canvas>
+          <div class="room-targets" id="room-targets" hidden>
+            <a class="room-target" data-anchor="projects" href="#projects"><span class="target-dot">+</span><span class="target-label">THE RELIC SHELF<small>Projects & experiments</small></span></a>
+            <a class="room-target" data-anchor="cv" href="#cv"><span class="target-dot">+</span><span class="target-label">THE COMPUTER<small>My CV, minus the paper</small></span></a>
+            <a class="room-target" data-anchor="work" href="#work"><span class="target-dot">+</span><span class="target-label">THE PINBOARD<small>Places I've worked</small></span></a>
+          </div>
+          <p id="scene-status" class="scene-status" role="status">Setting the room in order…</p>
+        </div>
+        <div class="room-caption"><span><span class="tiny-cross" aria-hidden="true">✦</span> A quiet corner, a work in progress.</span><span>CLICK OR TAP TO EXPLORE</span></div>
+      </section>
+      <nav class="explore-nav" aria-label="Explore the study">
+        <a href="#projects"><span class="nav-number">01</span><span><strong>The relic shelf</strong><small>Projects & experiments</small></span><span class="nav-arrow" aria-hidden="true">↗</span></a>
+        <a href="#cv"><span class="nav-number">02</span><span><strong>The computer</strong><small>Curriculum vitae</small></span><span class="nav-arrow" aria-hidden="true">↗</span></a>
+        <a href="#work"><span class="nav-number">03</span><span><strong>The pinboard</strong><small>Work history</small></span><span class="nav-arrow" aria-hidden="true">↗</span></a>
+      </nav>
+      <div id="content" tabindex="-1">
+        <div class="print-heading"><h1>Justin Wong</h1><p>Software engineer · <a href="https://github.com/justinattw">github.com/justinattw</a></p></div>
+        <section id="projects" class="content-section" aria-labelledby="projects-title">
+          <p class="eyebrow">01 / THE RELIC SHELF</p><h2 id="projects-title">Small builds.<br><em>Good questions.</em></h2>
+          <p class="section-intro">A shelf for things I've made, and ideas that haven't quite made it off the desk.</p>
+          <div class="project-grid">
+            <article class="project-card"><div class="relic relic-paper" aria-hidden="true"><div class="paper-sheet"><span>FIELD NOTES / 001</span><b>Momentum</b><i></i><i></i><i></i><span>RESEARCH & BACKTESTING</span></div></div><div class="project-copy"><span class="tag">EXISTING PROJECT</span><h3>Momentum backtest</h3><p>An exploration of momentum investing through backtesting: what happens when an investment idea meets historical data?</p><p class="honest-note">Results and performance metrics are not published here yet.</p><span class="project-category">FINANCE / RESEARCH</span></div></article>
+            <article class="project-card"><div class="relic relic-machine" aria-hidden="true"><div class="mini-machine"><span>CONTAINER / 002</span><div><i></i><i></i><i></i></div><b>&gt;_</b></div></div><div class="project-copy"><span class="tag">EXISTING PROJECT</span><h3>Mini container runtime</h3><p>A small container-runtime project, exploring what sits underneath the tools we use to run software.</p><p class="honest-note">Implementation notes and a project link are not published here yet.</p><span class="project-category">SYSTEMS / EXPERIMENTS</span></div></article>
+            <article class="planned-project"><span class="tag">FUTURE CONCEPT · NOT BUILT</span><h3>A room that remembers</h3><p>A possible next experiment: turn this shelf into a living notebook, with build logs tucked inside each relic.</p></article>
+          </div>
+        </section>
+        <section id="cv" class="content-section" aria-labelledby="cv-title">
+          <p class="eyebrow">02 / THE COMPUTER</p><h2 id="cv-title">Justin Wong<span class="terminal-cursor" aria-hidden="true">_</span></h2>
+          <p class="section-intro">Software engineer working on distributed systems and reliable platforms. Currently at GitHub, on Notifications.</p>
+          <div class="cv-terminal"><div class="terminal-bar"><span aria-hidden="true">● ● ●</span><span>justin@study: ~/cv</span></div><div class="terminal-body"><p><span class="prompt">$</span> cat education.txt</p><article class="education"><h3>University of Oxford</h3><p>MSc Software Engineering (Part-Time)</p><div><span>Oct 2022 – May 2026</span><strong>Merit</strong></div></article><article class="education"><h3>University College London</h3><p>Bachelor of Arts and Sciences<br>Economics Major, Computing Minor</p><div><span>Oct 2017 – Jul 2020</span><strong>First Class Honors</strong></div></article><p><span class="prompt">$</span> open github.com/justinattw</p><a href="https://github.com/justinattw" target="_blank" rel="noopener noreferrer">Browse my GitHub ↗</a></div></div>
+          <p class="cv-work-note">Work history is on the pinboard below, and included in the printable CV.</p>
+          <button type="button" class="print-button" data-print hidden>Print / save CV as PDF <span aria-hidden="true">↗</span></button>
+        </section>
+        <section id="work" class="content-section" aria-labelledby="work-title">
+          <p class="eyebrow">03 / THE PINBOARD</p><h2 id="work-title">A few places<br> <em>along the way.</em></h2>
+          <p class="section-intro">The access cards come off. The experience stays.</p>
+          <div class="access-cards">
+            <article class="access-card github-card"><div class="lanyard" aria-hidden="true"></div><div class="badge-top"><span>EMPLOYEE ACCESS</span><span class="tag current">CURRENT</span></div><div class="badge-body"><span class="company-mark" aria-hidden="true">GH</span><h3>GitHub</h3><p class="role-detail">Software Engineer, Platform Engineering (Notifications)</p><p class="dates">Feb 2025 – present</p><ul><li>Helped scale Notifications from 1.5B to over 8B message deliveries daily, across product, platform and reliability engineering.</li><li>Availability champion and on-call engineer. Used Datadog telemetry to validate changes and support platform SLOs.</li><li>Expanded Notifications from one region to three, migrating 50 Kafka-backed jobs across seven workers and three database clusters to Azure.</li><li>Improved maintenance-job scheduling, reducing CPU utilisation and database load by 65% without adding capacity.</li><li>Built agentic postmortem and weekly SLO-report workflows, saving hours weekly.</li><li>Supported mobile live activity notifications for Copilot agent progress, demoed at GitHub Universe 2025.</li></ul><p class="stack">Go · Ruby · MySQL / Vitess · Redis · Kafka · Kubernetes</p></div><div class="badge-bottom"><span>JUSTIN WONG</span><span class="barcode" aria-hidden="true"></span></div></article>
+            <article class="access-card trading-card"><div class="lanyard" aria-hidden="true"></div><div class="badge-top"><span>EMPLOYEE ACCESS</span><span>02</span></div><div class="badge-body"><span class="company-mark" aria-hidden="true">TH</span><h3>TradingHub</h3><p class="role-detail">Software Engineer, Product (Market Abuse and Surveillance)</p><p class="dates">Nov 2023 – Feb 2024</p><ul><li>Processed daily trading data with quantitative models for market abuse detection, including insider trading, wash trading and spoofing.</li><li>Built pagination and tick-by-tick order-book replay. Reduced batch processing time by up to approximately 30% by eliminating repeated computation.</li></ul><p class="stack">Python · C# · In-house scripting and web languages</p></div><div class="badge-bottom"><span>JUSTIN WONG</span><span class="barcode" aria-hidden="true"></span></div></article>
+            <article class="access-card core-card"><div class="lanyard" aria-hidden="true"></div><div class="badge-top"><span>EMPLOYEE ACCESS</span><span>03</span></div><div class="badge-body"><span class="company-mark" aria-hidden="true">CS</span><h3>CoreStream</h3><p class="role-detail">Backend Software Engineer</p><p class="dates">Oct 2020 – Jul 2022</p><ul><li>Developed B2B governance, risk and compliance software for global clients including Deloitte, Shell and Glencore.</li><li>Owned the development lifecycle and led software design and code-sharing sessions.</li><li>Rewrote queries and triggers to eliminate deadlocks. Parallelised computation with C# tasks, improving loading times by approximately 20%.</li><li>Added Postman and Xunit testing to Azure Pipelines.</li></ul><p class="stack">C# · SQL · Azure Pipelines · Postman · Xunit</p></div><div class="badge-bottom"><span>JUSTIN WONG</span><span class="barcode" aria-hidden="true"></span></div></article>
+            <article class="access-card ucl-card"><div class="lanyard" aria-hidden="true"></div><div class="badge-top"><span>EMPLOYEE ACCESS</span><span>04</span></div><div class="badge-body"><span class="company-mark" aria-hidden="true">UCL</span><h3>UCL Computer Science</h3><p class="role-detail">Full Stack Web Developer</p><p class="dates">Jul 2020 – Oct 2020</p><ul><li>Built a Django ticketing system for online labs, with Django Channels WebSocket chat.</li><li>Integrated Microsoft Graph for authentication, Teams and calendars.</li></ul><p class="stack">Python · Django · WebSockets · Microsoft Graph</p></div><div class="badge-bottom"><span>JUSTIN WONG</span><span class="barcode" aria-hidden="true"></span></div></article>
+            <article class="access-card nuveen-card"><div class="lanyard" aria-hidden="true"></div><div class="badge-top"><span>EMPLOYEE ACCESS</span><span>05</span></div><div class="badge-body"><span class="company-mark" aria-hidden="true">N</span><h3>Nuveen</h3><p class="role-detail">Data Engineering Intern, Asset Management (Fixed Income)</p><p class="dates">May – Sep 2019</p><ul><li>Integrated Excel and web-scraped data sources through ETL workflows.</li><li>Used Pandas for cleaning, transformation and core-metric analytics, with Tableau reporting.</li></ul><p class="stack">Python · Pandas · Tableau</p></div><div class="badge-bottom"><span>JUSTIN WONG</span><span class="barcode" aria-hidden="true"></span></div></article>
+          </div>
+          <p class="fine-print">Personal representations of work history, not official access credentials.</p>
+        </section>
+      </div>
+    </main>
+    <footer><span>JUSTIN WONG <span class="footer-divider">/</span> THE STUDY</span><button id="plain-toggle" type="button" hidden>Switch to simple view</button><span>Built with curiosity. Best explored slowly.</span></footer>
+    <dialog id="detail-dialog" aria-label="Portfolio detail"><div class="dialog-toolbar"><span>THE STUDY / TAKE A CLOSER LOOK</span><button id="close-dialog" type="button" aria-label="Close detail">Close <span aria-hidden="true">×</span></button></div><div id="dialog-content"></div></dialog>
+  </body>
+</html>

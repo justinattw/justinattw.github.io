@@ -6,7 +6,6 @@ export function createTerminal({ onCV }) {
   const output = document.createElement('pre');
   output.setAttribute('role', 'status');
   output.setAttribute('aria-live', 'polite');
-  output.textContent = 'Press \\ for commands.';
   const form = document.createElement('form');
   const prompt = document.createElement('span');
   prompt.textContent = 'justinattw$ ';
@@ -35,7 +34,10 @@ export function createTerminal({ onCV }) {
   submit.setAttribute('aria-label', 'Run command');
   const help = document.createElement('button');
   help.type = 'button';
-  help.textContent = '\\ / commands';
+  const shortcut = document.createElement('kbd');
+  shortcut.textContent = '\\';
+  help.append(shortcut, ' for commands');
+  help.setAttribute('aria-label', 'Backslash for commands');
   help.setAttribute('aria-keyshortcuts', '\\');
   help.setAttribute('aria-expanded', 'false');
   help.setAttribute('aria-controls', 'terminal-commands');

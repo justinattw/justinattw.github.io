@@ -1,0 +1,29 @@
+import { test, expect } from '@playwright/test';
+
+test('monitor terminal supports command help, files and opening the original résumé', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#cv');
+  const input = page.getByRole('textbox', { name: 'Terminal command' });
+  await expect(input).toBeVisible();
+  await input.press('Tab');
+  await expect(page.locator('#terminal-commands')).toBeVisible();
+  await page.locator('#terminal-commands').getByRole('button', { name: 'ls', exact: true }).click();
+  await expect(input).toHaveValue('ls');
+  await input.press('Enter');
+  await expect(page.locator('#computer-terminal pre')).toHaveText('resume.pdf');
+  await input.fill('not-a-command');
+  await input.press('Enter');
+  await expect(page.locator('#computer-terminal pre')).toContainText('Unknown command');
+  await page.context().route('**/justin-wong-resume.pdf', route => route.fulfill({ contentType: 'text/html', body: 'PDF destination' }));
+  const popup = page.waitForEvent('popup');
+  await input.fill('open resume.pdf');
+  await input.press('Enter');
+  const pdf = await popup;
+  await expect(pdf).toHaveURL(/\/justin-wong-resume.pdf$/);
+  await pdf.close();
+  await input.fill('clear');
+  await input.press('Enter');
+  await expect(page.locator('#computer-terminal pre')).toBeEmpty();
+  await page.getByRole('button', { name: 'Tab / commands' }).click();
+  await expect(page.locator('#terminal-commands')).toBeVisible();
+});

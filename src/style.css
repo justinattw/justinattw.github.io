@@ -35,6 +35,14 @@ h1, h2 { font-family: Georgia, serif; font-weight: 400; }
 .room-target:hover .target-dot, .room-target:focus-visible .target-dot { transform: scale(1.2); background: #86683a; }
 .artifact-target { position: absolute; transform: translate(-50%, -50%); width: 48px; height: 56px; padding: 0; border: 1px solid transparent; background: transparent; border-radius: 5px; pointer-events: auto; }
 .artifact-target:hover, .artifact-target:focus-visible { background: #e9dcb511; border-color: #e9dcb566; }
+#computer-terminal { position: absolute; z-index: 2; background: #102d24; color: #b5cda0; padding: 8px; font-family: "Courier New", Courier, monospace; display: flex; flex-direction: column; gap: 5px; overflow: hidden; }
+#computer-terminal[hidden], #terminal-commands[hidden] { display: none; }
+#computer-terminal pre { margin: 0; min-height: 0; flex: 1; overflow: auto; white-space: pre-wrap; font: inherit; }
+#computer-terminal form { display: flex; align-items: center; flex-shrink: 0; }
+#computer-terminal input { min-width: 0; width: 100%; background: transparent; color: inherit; font: inherit; border: 0; border-bottom: 1px solid #72896b; border-radius: 0; }
+#computer-terminal button { color: inherit; background: #173a2c; border: 1px solid #72896b; font: inherit; padding: 3px 6px; cursor: pointer; }
+#terminal-commands { position: absolute; inset: 5px 5px 36px; overflow: auto; padding: 5px; display: flex; flex-direction: column; background: #142f24; gap: 4px; }
+.simple #computer-terminal { display: none; }
 #scene-back { position: fixed; top: 85px; left: 30px; z-index: 4; min-height: 44px; padding: 10px 18px; border: 1px solid #c8b27e55; border-radius: 25px; background: #14241bd9; font-size: 11px; }
 #scene-actions { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100vw - 30px); white-space: nowrap; font-size: 11px; background: #14241bd9; border-radius: 25px; padding: 4px 12px; }
 #scene-actions:empty { display: none; }
@@ -125,7 +133,7 @@ body[data-destination] #plain-toggle { visibility: hidden; }
   .room-wrap { min-height: 640px; }
   .room-caption { bottom: 100px; left: 0; width: 100%; text-align: center; font-size: 9px; }
   .explore-nav { bottom: 39px; white-space: nowrap; }
-  .explore-nav a { padding: 11px 22px; }
+  .explore-nav a { padding: 11px 14px; }
   footer { bottom: 10px; right: 15px; }
   footer button { font-size: 9px; }
   .target-label { font-size: 9px; }

@@ -4,7 +4,7 @@ import { createCat } from './cat.js';
 import { createHobbyCupboard } from './hobby-cupboard.js';
 import { createWindowPlants } from './window-plants.js';
 
-export function createRoom({ canvas, targets, onSelect, onReady, onError, onItemSelect = () => {}, jobs = [], projects = [], overview = false }) {
+export function createRoom({ canvas, targets, onSelect, onReady, onError, onItemSelect = () => {}, jobs = [], projects = [], overview = false, terminal }) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#161d19');
   scene.fog = new THREE.FogExp2('#161d19', .012);
@@ -139,32 +139,32 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   const wallMaterial = new THREE.MeshStandardMaterial({ map: wallpaper, roughness: .95 });
 
   // The viewer is inside the room, facing the desk rather than an open dollhouse.
-  box(0, -.12, 6, 14, .24, 21, walnut);
+  box(0, -.12, 6, 18.2, .24, 21, walnut);
   const floorboards = ['#9e7f5a', '#b08b60', '#967750'].map(color => new THREE.MeshStandardMaterial({ color, map: grain, roughness: .62, bumpMap: grain, bumpScale: .018 }));
-  for (let row = 0; row < 22; row++) for (let col = 0; col < 10; col++) {
-    box(-6.3 + col * 1.4, .005, -3.55 + row * .92, 1.38, .025, .9, floorboards[(row + col) % 3]);
+  for (let row = 0; row < 22; row++) for (let col = 0; col < 13; col++) {
+    box(-8.4 + col * 1.4, .005, -3.55 + row * .92, 1.38, .025, .9, floorboards[(row + col) % 3]);
   }
-  box(0, 4, -4.1, 14, 8, .2, wallMaterial);
-  box(-7, 4, 5, .2, 8, 18, '#243e32');
-  box(7, 4, 5, .2, 8, 18, '#243e32');
-  box(0, 8, 4, 14, .2, 18, '#343b2e');
-  for (let z = -3; z < 14; z += 3) box(0, 7.83, z, 14, .18, .16, walnut);
-  for (const x of [-4.5, 0, 4.5]) box(x, 7.82, 5, .17, .2, 18, walnut);
-  box(0, 1, -3.94, 14, 2, .18, walnut);
-  for (let i = 0; i < 14; i++) {
-    const x = -6.5 + i;
+  box(0, 5, -4.1, 18.2, 10, .2, wallMaterial);
+  box(-9.1, 5, 5, .2, 10, 18, '#243e32');
+  box(9.1, 5, 5, .2, 10, 18, '#243e32');
+  box(0, 10, 4, 18.2, .2, 18, '#343b2e');
+  for (let z = -3; z < 14; z += 3) box(0, 9.83, z, 18.2, .18, .16, walnut);
+  for (const x of [-6, 0, 6]) box(x, 9.82, 5, .17, .2, 18, walnut);
+  box(0, 1, -3.94, 18.2, 2, .18, walnut);
+  for (let i = 0; i < 18; i++) {
+    const x = -8.5 + i;
     box(x, 1, -3.82, .76, 1.48, .055, '#29392c');
     for (const dx of [-.42, .42]) box(x + dx, 1, -3.76, .045, 1.65, .04, brass);
     for (const y of [.18, 1.82]) box(x, y, -3.76, .88, .04, .04, brass);
   }
-  for (const [y, h, depth] of [[.13, .22, .2], [1.95, .09, .26], [2.05, .06, .3], [7.6, .08, .3], [7.7, .14, .42], [7.85, .12, .55]]) {
-    box(0, y, -3.8, 14, h, depth, y > 7 ? '#b49a67' : walnut);
-    for (const x of [-6.85, 6.85]) box(x, y, 4, depth, h, 16, y > 7 ? '#b49a67' : walnut);
+  for (const [y, h, depth] of [[.13, .22, .2], [1.95, .09, .26], [2.05, .06, .3], [9.6, .08, .3], [9.7, .14, .42], [9.85, .12, .55]]) {
+    box(0, y, -3.8, 18.2, h, depth, y > 7 ? '#b49a67' : walnut);
+    for (const x of [-8.95, 8.95]) box(x, y, 4, depth, h, 16, y > 7 ? '#b49a67' : walnut);
   }
-  for (let i = 0; i < 45; i++) box(-6.85 + i * .31, 7.59, -3.6, .12, .13, .12, '#a78b59');
+  for (let i = 0; i < 58; i++) box(-8.85 + i * .31, 9.59, -3.6, .12, .13, .12, '#a78b59');
 
   function archedWindow(x) {
-    const width = 1.85, base = 2.15, shoulder = 5.85, radius = width / 2;
+    const width = 1.85, base = .25, shoulder = 6.1, radius = width / 2;
     const shape = new THREE.Shape();
     shape.moveTo(-radius, base);
     shape.lineTo(radius, base);
@@ -199,20 +199,20 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     const arch = new THREE.Mesh(new THREE.TorusGeometry(radius + .08, .09, 8, 40, Math.PI), material('#c2aa7c'));
     arch.position.set(x, shoulder, -3.57);
     scene.add(arch);
-    box(x, 4.25, -3.51, .065, 4.2, .09, '#bda77c');
-    for (const y of [3.5, 4.8, 5.85]) box(x, y, -3.51, width, .055, .09, '#bda77c');
+    box(x, 3.2, -3.51, .065, 5.9, .09, '#bda77c');
+    for (const y of [2.2, 4.15, 6.1]) box(x, y, -3.51, width, .055, .09, '#bda77c');
     box(x, base, -3.43, width + .48, .16, .6, walnut);
-    cylinder(x, 6.96, -3.37, .045, width + 1.1, brass).rotation.z = Math.PI / 2;
+    cylinder(x, 7.25, -3.37, .045, width + .5, brass).rotation.z = Math.PI / 2;
     for (const side of [-1, 1]) {
-      for (let fold = 0; fold < 5; fold++) {
-        const curtain = cylinder(x + side * (radius + .16 + fold * .055), 4.45, -3.34 + (fold % 2) * .06, .11, 4.65, fold % 2 ? '#553b33' : '#65493b', scene, .1);
+      for (let fold = 0; fold < 3; fold++) {
+        const curtain = cylinder(x + side * (radius + .08 + fold * .035), 3.7, -3.34 + (fold % 2) * .06, .075, 6.8, fold % 2 ? '#553b33' : '#65493b', scene, .07);
         curtain.scale.z = .65;
       }
       sphere(x + side * (radius + .22), 3.7, -3.17, .14, .045, .12, brass);
     }
   }
-  archedWindow(-5);
-  archedWindow(5);
+  for (const x of [-2.4, 0, 2.4]) archedWindow(x);
+  canvas.dataset.windowCount = '3';
 
   // Persian-style rug with nested borders and a central medallion.
   box(0, .04, .9, 6.8, .035, 5.2, '#593e32');
@@ -231,6 +231,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   innerMedallion.scale.z = 1.3;
 
   const shelf = destination('projects');
+  shelf.position.x = -2.2;
   box(-3.15, 2.05, -3.35, 2.05, 4.1, .72, walnut, shelf);
   box(-3.15, 2.05, -2.96, 1.8, 3.8, .04, '#30231b', shelf);
   for (const x of [-4.18, -2.12]) {
@@ -291,7 +292,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   for (let i = 0; i < 5; i++) sphere(-.35 + i * .175, 1.39, .625, .018, .018, .015, brass);
 
   const pinboard = destination('work');
-  pinboard.position.x = -.35;
+  pinboard.position.set(1.7, 3.2, 0);
   box(3.12, 3.03, -3.67, 2.12, 1.85, .15, walnut, pinboard);
   box(3.12, 3.03, -3.57, 1.96, 1.69, .04, '#806340', pinboard);
   for (const x of [2.1, 4.14]) box(x, 3.03, -3.5, .04, 1.85, .04, brass, pinboard);
@@ -303,17 +304,17 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     for (const dx of [-.055, .055]) box(x + dx, y, -3.48, .025, .3, .018, badges[i], pinboard);
   }
   // Gilt picture frame and a small pendulum clock above the desk.
-  box(0, 4.7, -3.69, 1.9, 1.45, .12, walnut);
-  box(0, 4.7, -3.6, 1.78, 1.33, .06, brass);
-  label('THE STUDY\nEST. IN CURIOSITY', 0, 4.7, -3.55, 1.62, 1.17, { background: '#263c30', foreground: '#bca77b', size: 30 });
-  cylinder(0, 5.9, -3.6, .32, .1, brass).rotation.x = Math.PI / 2;
+  box(-5.35, 6, -3.69, 1.9, 1.45, .12, walnut);
+  box(-5.35, 6, -3.6, 1.78, 1.33, .06, brass);
+  label('THE STUDY\nEST. IN CURIOSITY', -5.35, 6, -3.55, 1.62, 1.17, { background: '#263c30', foreground: '#bca77b', size: 30 });
+  cylinder(4.85, 8.3, -3.6, .32, .1, brass).rotation.x = Math.PI / 2;
   const clockFace = new THREE.Mesh(new THREE.CircleGeometry(.27, 40), material('#d2c19b'));
-  clockFace.position.set(0, 5.9, -3.53);
+  clockFace.position.set(4.85, 8.3, -3.53);
   scene.add(clockFace);
   const hourHand = new THREE.Group();
   const minuteHand = new THREE.Group();
-  hourHand.position.set(0, 5.9, -3.51);
-  minuteHand.position.set(0, 5.9, -3.5);
+  hourHand.position.set(4.85, 8.3, -3.51);
+  minuteHand.position.set(4.85, 8.3, -3.5);
   scene.add(hourHand, minuteHand);
   box(0, .065, 0, .022, .13, .015, '#403b2d', hourHand);
   box(0, .1, 0, .014, .2, .015, '#403b2d', minuteHand);
@@ -357,8 +358,8 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     return leaves;
   }
   plant(6.2, 0, .4, 1, '#786147');
-  plant(-5.65, 0, -2.35, 1.8, '#806044');
-  const shelfPlant = plant(-3.15, 4.345, -3.2, .6, '#758477');
+  plant(-7.65, 0, -3.2, 1.35, '#806044');
+  plant(-5.35, 4.345, -3.2, .6, '#758477');
   plant(1.7, 1.84, -2.45, .45, '#a27856');
   const windowPlants = createWindowPlants({ scene, cylinder, material });
   cylinder(-5, .5, -.2, .3, .9, walnut);
@@ -396,16 +397,16 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   }
 
   const anchors = {
-    projects: new THREE.Vector3(-2.35, 3.85, -2.5),
+    projects: new THREE.Vector3(-4.55, 3.85, -2.5),
     cv: new THREE.Vector3(.6, 3.02, -1.56),
-    work: new THREE.Vector3(3.58, 3.73, -3.4),
-    hobbies: new THREE.Vector3(4.15, 1.86, -2.4),
+    work: new THREE.Vector3(5.63, 6.93, -3.4),
+    hobbies: new THREE.Vector3(6, 4.85, -2.4),
   };
   const views = {
-    projects: { position: [-3.15, 1.8, .8], target: [-3.15, 1.8, -2.85] },
+    projects: { position: [-5.35, 1.8, .8], target: [-5.35, 1.8, -2.85] },
     cv: { position: [0, 2.65, .65], target: [0, 2.6, -1.7] },
-    work: { position: [2.77, 3.03, .1], target: [2.77, 3.03, -3.5] },
-    hobbies: { position: [3.35, 1.15, 1.7], target: [3.35, 1.1, -2.4] },
+    work: { position: [4.82, 6.23, .1], target: [4.82, 6.23, -3.5] },
+    hobbies: { position: [5.1, 2.6, 4], target: [5.1, 2.6, -2.4] },
   };
   const look = new THREE.Vector3(0, 3, -3.5);
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -418,11 +419,11 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     if (overview) {
       const aspect = canvas.clientWidth / canvas.clientHeight;
       const fov = canvas.clientWidth < 650 ? 55 : 48;
-      return { position: [0, 3.8, Math.max(8.4, 13 / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect) - 3.5)], target: [0, 3.3, -3.5] };
+      return { position: [0, 4.6, Math.max(11, 14 / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect) - 3.5)], target: [0, 4.7, -3.5] };
     }
     return canvas.clientWidth < 650
-      ? { position: [0, 3.3, 14], target: [0, 3, -3.5] }
-      : { position: [0, 3.1, 8.4], target: [0, 3.3, -3.5] };
+      ? { position: [0, 3.6, 18.5], target: [0, 3.6, -3.5] }
+      : { position: [0, 3.6, 9], target: [0, 3.6, -3.5] };
   }
   function applyView(view) {
     camera.position.fromArray(view.position);
@@ -432,7 +433,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     const base = id ? views[id] : home();
     const view = { position: [...base.position], target: [...base.target] };
     if (id && canvas.clientWidth < 650) {
-      const desiredWidth = { cv: 1.9, work: 2.5, projects: 2.6, hobbies: 3.4 }[id];
+      const desiredWidth = { cv: 1.9, work: 2.5, projects: 2.6, hobbies: 3.8 }[id];
       const distance = desiredWidth / (2 * Math.tan(THREE.MathUtils.degToRad(24)) * (canvas.clientWidth / canvas.clientHeight));
       view.position[2] = Math.max(view.position[2], view.target[2] + distance);
     }
@@ -470,9 +471,6 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     cat.update(catMoving && lastRender !== undefined ? Math.min((now - lastRender) / 1000, .05) : 0);
     canvas.dataset.catAction = cat.root.userData.action;
     windowPlants.update(now / 1000, catMoving && cat.root.userData.action === 'play-plant');
-    shelfPlant.forEach(({ leaf, angle }, index) => {
-      leaf.rotation.z = angle + (catMoving && cat.root.userData.action === 'play-shelf-plant' ? Math.sin(now / 110 + index) * .1 : 0);
-    });
     lastRender = now;
     canvas.dataset.catPosition = cat.root.position.toArray().map(value => value.toFixed(3)).join(',');
     const { width, height } = canvas.getBoundingClientRect();
@@ -497,13 +495,28 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     camera.lookAt(look);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
+    if (terminal) {
+      terminal.hidden = current !== 'cv' || Boolean(transition);
+      if (!terminal.hidden) {
+        const topLeft = new THREE.Vector3(-.58, 3, -1.57).project(camera);
+        const bottomRight = new THREE.Vector3(.58, 2.3, -1.57).project(camera);
+        const screenWidth = (bottomRight.x - topLeft.x) * width / 2;
+        terminal.style.left = `${(topLeft.x + 1) * width / 2}px`;
+        terminal.style.top = `${(1 - topLeft.y) * height / 2}px`;
+        terminal.style.width = `${screenWidth}px`;
+        terminal.style.height = `${(topLeft.y - bottomRight.y) * height / 2}px`;
+        terminal.style.fontSize = `${Math.max(11, screenWidth / 32)}px`;
+      }
+    }
     renderer.render(scene, camera);
     renderer.shadowMap.autoUpdate = false;
     for (const element of targets.children) {
       const item = element.dataset.kind && physical.items.find(item => item.kind === element.dataset.kind && item.index === Number(element.dataset.index));
       const point = item ? item.root.getWorldPosition(new THREE.Vector3()).project(camera) : anchors[element.dataset.anchor].clone().project(camera);
-      element.style.left = `${THREE.MathUtils.clamp((point.x + 1) * 50, 8, 92)}%`;
-      element.style.top = `${THREE.MathUtils.clamp((1 - point.y) * 50, 15, 85)}%`;
+      const halfWidth = Math.max(element.offsetWidth, item ? 48 : 100) / 2 + 8;
+      const halfHeight = Math.max(element.offsetHeight, item ? 56 : 88) / 2 + 8;
+      element.style.left = `${THREE.MathUtils.clamp((point.x + 1) * width / 2, halfWidth, width - halfWidth)}px`;
+      element.style.top = `${THREE.MathUtils.clamp((1 - point.y) * height / 2, halfHeight, height - halfHeight)}px`;
     }
     canvas.dataset.view = current || 'room';
     canvas.dataset.item = activeItem ? `${activeItem.kind}-${activeItem.index}` : '';
@@ -603,7 +616,7 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
   targets.hidden = false;
   onReady();
   function itemView(item) {
-    const target = item.stage.clone();
+    const target = item.root.parent.localToWorld(item.stage.clone());
     if (item.kind === 'job') target.x -= .35;
     const width = item.kind === 'job' ? 2.65 : 3.9;
     const height = item.kind === 'job' ? 4.1 : 3;

@@ -32,13 +32,13 @@ export function createWindowPlants({ scene, cylinder, material }) {
     splitLeaf.holes.push(hole);
   }
   const monsteraGeometry = new THREE.ShapeGeometry(splitLeaf);
-  pot(4.95, -1.05, '#927354', .38);
+  pot(3, -3.1, '#927354', .38);
   for (let index = 0; index < 7; index++) {
     const angle = index * 2.4;
-    const x = 4.95 + Math.cos(angle) * .46;
+    const x = 3 + Math.cos(angle) * .46;
     const y = .76 + (index % 3) * .3;
-    const z = -1.05 + Math.sin(angle) * .3;
-    stem([[4.95, .53, -1.05], [4.95, y - .12, -1.05], [x, y, z]]);
+    const z = -3.1 + Math.sin(angle) * .3;
+    stem([[3, .53, -3.1], [3, y - .12, -3.1], [x, y, z]]);
     const leaf = new THREE.Mesh(monsteraGeometry, new THREE.MeshStandardMaterial({ color: index % 2 ? '#3d643b' : '#56794a', side: THREE.DoubleSide, roughness: .7 }));
     leaf.position.set(x, y, z);
     leaf.scale.setScalar(.58 + (index % 2) * .12);
@@ -46,7 +46,7 @@ export function createWindowPlants({ scene, cylinder, material }) {
     scene.add(leaf);
     leaves.push({ leaf, angle: leaf.rotation.z });
   }
-  pot(5.55, -2.6, '#758073', .43);
+  pot(8.35, -3.3, '#758073', .43);
   const banana = new THREE.Shape();
   banana.moveTo(0, 0);
   banana.bezierCurveTo(-.32, .25, -.4, 1.15, 0, 1.65);
@@ -54,10 +54,10 @@ export function createWindowPlants({ scene, cylinder, material }) {
   const bananaGeometry = new THREE.ShapeGeometry(banana);
   for (let index = 0; index < 6; index++) {
     const angle = index * 2.4;
-    const x = 5.55 + Math.cos(angle) * .35;
+    const x = 8.35 + Math.cos(angle) * .35;
     const y = .85 + (index % 3) * .32;
-    const z = -2.6 + Math.sin(angle) * .3;
-    stem([[5.55, .53, -2.6], [5.55, y, -2.6], [x, y + .12, z]]);
+    const z = -3.3 + Math.sin(angle) * .3;
+    stem([[8.35, .53, -3.3], [8.35, y, -3.3], [x, y + .12, z]]);
     const leaf = new THREE.Mesh(bananaGeometry, new THREE.MeshStandardMaterial({ color: index % 2 ? '#476944' : '#698449', side: THREE.DoubleSide, roughness: .75 }));
     leaf.position.set(x, y, z);
     leaf.rotation.set(-.2, Math.sin(angle) * .8, Math.cos(angle) * .45);

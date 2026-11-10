@@ -1,11 +1,14 @@
 # justinattw.github.io
 Personal portfolio and CV, presented as an interactive 3D study.
 
-An immersive, front-facing Victorian study with tall arched windows, walnut
+An immersive, front-facing townhouse study with three closely spaced arched windows, walnut
 panelling and a retro computer. The camera moves towards each destination.
 Lanyard cards have playful, procedurally drawn company emblems and flip to reveal
 the role's details. Titled books pull off the shelf and open to project notes.
 The CV pages directly on the monitor. There are no popup panels.
+The monitor also has a browser-only terminal: `open resume.pdf`, `ls`, `cv`,
+`help` and `clear`. Tab in its input opens command suggestions; a visible
+commands button provides the same access on touch devices. No shell is executed.
 The right-hand cupboard opens to show crosswords, skis, a football, dumbbells,
 language books and running shoes.
 
@@ -31,10 +34,10 @@ npm test
 ```
 
 Vite builds the static site to `dist/`. Three.js renders the procedural room,
-with no downloaded models or image assets. Potted plants and a small ginger tabby
+with no downloaded models or image assets. Potted plants and a small gray tabby
 bring the room to life. The cat animates at up to 30 frames per second in the
 room overview, alternating walks, rests, grooming, plant play and jumps onto the
-chair, desk and bookshelf. Monsteras and bird-of-paradise plants sit beneath the
+chair and desk. Monsteras and bird-of-paradise plants sit beneath the
 right window. The cat pauses in close-ups and hidden tabs. Otherwise rendering happens
 on demand. The display caps pixel density at 2; reduced motion keeps the cat
 still and makes destination changes immediate instead of moving the camera.

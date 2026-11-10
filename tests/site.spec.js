@@ -71,6 +71,8 @@ test('room destinations move the camera without opening popups', async ({ page }
 test('hobbies cupboard opens and closes with accessible contents', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/#hobbies');
+  await expect(page.locator('.explore-nav a[href="#hobbies"]')).toHaveText('Interests');
+  await expect(page.locator('#hobbies-title')).toHaveText('Interests');
   await expect(page.locator('#room')).toHaveAttribute('data-cupboard-open', 'true');
   for (const hobby of ['Crosswords', 'Skiing', 'Football', 'Gym', 'Languages', 'Running']) {
     await expect(page.locator('#scene-reader')).toContainText(hobby);
@@ -128,6 +130,9 @@ test('computer pages through the CV on its own screen', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#room-targets')).toBeVisible();
   await enter(page, 'cv');
+  await expect(page.getByRole('textbox', { name: 'Terminal command' })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Terminal command' }).fill('cv');
+  await page.getByRole('textbox', { name: 'Terminal command' }).press('Enter');
   await expect(page.locator('#scene-reader')).toContainText('JUSTIN WONG');
   await page.getByRole('button', { name: 'Next CV page' }).click();
   await expect(page.locator('#scene-reader')).toContainText('GitHub');

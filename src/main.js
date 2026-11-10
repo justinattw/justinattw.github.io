@@ -1,3 +1,5 @@
+import { createTerminal } from './terminal.js';
+
 const content = document.querySelector('#content');
 const toggle = document.querySelector('#plain-toggle');
 const controls = document.querySelector('#scene-controls');
@@ -38,6 +40,7 @@ const cvPages = [
 ];
 let room, section, selected, lastTrigger;
 let simple = false, navigation = 0, cvPage = 0;
+const terminal = createTerminal({ onCV: () => showCVPage(0) });
 
 function setSimple(value) {
   simple = value;
@@ -59,6 +62,7 @@ function setHash(value) {
 function showCVPage(index) {
   cvPage = (index + cvPages.length) % cvPages.length;
   room?.showCV(cvPages[cvPage], cvPage, cvPages.length);
+  terminal.showCV(cvPages[cvPage]);
   reader.textContent = cvPages[cvPage];
   const position = document.querySelector('#cv-position');
   if (position) position.textContent = `${cvPage + 1} / ${cvPages.length}`;
@@ -99,7 +103,7 @@ async function openSection(id, trigger = document.activeElement) {
   if (!await room.focus(id) || token !== navigation) return;
   section = id;
   showControls();
-  if (id === 'cv') showCVPage(0);
+  if (id === 'cv') reader.textContent = 'Study terminal. Type open resume.pdf to open the résumé. Press Tab for commands.';
   else if (id === 'hobbies') reader.textContent = document.querySelector('#hobbies').textContent.trim();
   else reader.textContent = id === 'work' ? 'Choose a lanyard card. Each card flips over to show the full role.' : 'Choose a titled book to open that project.';
 }
@@ -193,6 +197,7 @@ function fallback(error) {
 const roomReady = import('./room.js').then(({ createRoom }) => {
   room = createRoom({
     canvas: document.querySelector('#room'),
+    terminal: terminal.element,
     targets: document.querySelector('#room-targets'),
     jobs, projects,
     onSelect: id => {

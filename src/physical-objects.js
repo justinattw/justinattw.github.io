@@ -102,13 +102,13 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, re
     }, 1024, 1400);
   }
   const volumes = [
-    ...Array.from({ length: 2 }, (_, index) => ({ kind: 'book', index, data: projects[index] || { title: index ? 'Container runtime' : 'Momentum backtest', description: 'Project notes coming soon.', note: 'Not yet published.' } })),
+    ...projects.map((data, index) => ({ kind: 'book', index, data })),
     ...reading.map((data, index) => ({ kind: 'reading', index, data })),
   ];
   for (const { kind, index: i, data: project } of volumes) {
     const isReading = kind === 'reading';
     const rowIndex = isReading ? reading.slice(0, i).filter(book => book.shelf === project.shelf).length : i;
-    const rowCount = isReading ? reading.filter(book => book.shelf === project.shelf).length : 2;
+    const rowCount = isReading ? reading.filter(book => book.shelf === project.shelf).length : projects.length;
     const pitch = .35 * Math.min(1, 5 / rowCount);
     const root = new THREE.Group();
     root.position.set(-3.15 + (rowIndex - (rowCount - 1) / 2) * pitch, isReading ? project.shelf === 'recent' ? 2.59 : 3.55 : .69, -2.78);

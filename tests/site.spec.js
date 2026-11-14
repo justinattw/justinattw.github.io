@@ -112,7 +112,7 @@ test('reading and projects have separate shelf focuses and Goodreads book links'
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await enter(page, 'projects');
-  await expect(page.locator('[data-kind="book"]')).toHaveCount(2);
+  await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
   await expect(page.locator('[data-kind="reading"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -154,14 +154,15 @@ test('titled books open as physical project pages, not panels', async ({ page })
   await page.goto('/');
   await expect(page.locator('#room-targets')).toBeVisible();
   await enter(page, 'projects');
-  await expect(page.locator('[data-kind="book"]')).toHaveCount(2);
-  for (const [index, title] of ['Momentum backtest', 'Mini container runtime'].entries()) {
+  await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
+  await expect(page.locator('#projects .honest-note a')).toHaveAttribute('href', 'https://github.com/justinattw/rectangle');
+  for (const [index, title] of ['Momentum backtest', 'Mini container runtime', 'Rectangle'].entries()) {
     await page.getByRole('button', { name: `Open ${title}`, exact: true }).click();
     await expect(page.locator('#room')).toHaveAttribute('data-item', `book-${index}`);
     await expect(page.locator('#scene-reader')).toContainText(title);
-    await expect(page.locator('#scene-reader')).toContainText('not yet published');
+    await expect(page.locator('#scene-reader')).toContainText(index === 2 ? 'A side project' : 'not yet published');
     await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await expect(page.locator('[data-kind="book"]')).toHaveCount(2);
+    await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
   }
   await expect(page.locator('#projects')).not.toBeVisible();
 });
@@ -242,11 +243,11 @@ test('keyboard, nested deep links, browser history and simple view', async ({ pa
   await expect(page.locator('[data-anchor="projects"]')).toBeVisible();
   await page.locator('.explore-nav a[href="#projects"]').focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('[data-kind="book"]')).toHaveCount(2);
+  await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
   await page.goBack();
   await expect(page.locator('[data-anchor="cv"]')).toBeVisible();
   await page.goForward();
-  await expect(page.locator('[data-kind="book"]')).toHaveCount(2);
+  await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Simple view' }).click();
   await expect(page.locator('#work')).toBeVisible();

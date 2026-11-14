@@ -59,8 +59,17 @@ Unavailable categories have unnamed decorative books instead of labels or links.
 
 ## Updating content
 
-Edit the semantic sections in `index.html`. The same content supplies the physical
-objects, screen-reader descriptions, simple view and printable CV.
+Edit the semantic sections in `index.html`. Project books are generated from
+the `.md` files in `projects/`, in filename order. Start each file with a `#`
+title. The supported Markdown includes paragraphs, `##` and `###` headings,
+`-` lists, fenced code blocks, inline code, bold, italics and HTTP(S) links.
+Project links appear below the open book and in simple view. Longer project
+notes have page controls. The build renders these files into static HTML, so
+project content and links also work without JavaScript.
+Clicking an open book does not close it. Use its X control, the shelf button or
+Escape to close it. Left and Right arrow keys also turn project pages.
+The same content supplies the physical objects, screen-reader descriptions,
+simple view and printable CV.
 `src/room.js` defines the room and camera; `src/physical-objects.js` builds and
 animates the cards and books. `src/style.css` includes responsive and print layouts.
 

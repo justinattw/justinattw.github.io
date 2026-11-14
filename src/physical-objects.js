@@ -101,6 +101,60 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, re
       }
     }, 1024, 1400);
   }
+  function projectPages(blocks) {
+    const ctx = document.createElement('canvas').getContext('2d');
+    if (!ctx) throw new Error('Project page rendering is unavailable.');
+    const pages = [[]];
+    let y = 130;
+    for (const block of blocks) {
+      const heading = /^h[1-5]$/.test(block.type);
+      const size = block.type === 'h3' ? 78 : heading ? 58 : 46;
+      const font = `${heading ? 'bold ' : ''}${size}px ${block.type === 'pre' ? 'monospace' : 'Georgia'}`;
+      ctx.font = font;
+      const lineHeight = size * 1.35;
+      const text = block.type === 'list' ? `• ${block.text}` : block.text;
+      for (const paragraph of text.split('\n')) {
+        const words = paragraph.split(/\s+/);
+        const lines = [];
+        let line = '';
+        for (let word of words) {
+          while (ctx.measureText(word).width > 850) {
+            let end = 1;
+            while (end < word.length && ctx.measureText(word.slice(0, end + 1)).width <= 850) end++;
+            if (line) { lines.push(line); line = ''; }
+            lines.push(word.slice(0, end));
+            word = word.slice(end);
+          }
+          const next = line ? `${line} ${word}` : word;
+          if (line && ctx.measureText(next).width > 850) { lines.push(line); line = word; }
+          else line = next;
+        }
+        lines.push(line);
+        for (const text of lines) {
+          if (y + lineHeight > 1280) { pages.push([]); y = 130; }
+          pages.at(-1).push({ text, y, font });
+          y += lineHeight;
+        }
+      }
+      y += heading ? 34 : 24;
+      if (block === blocks[0] && blocks.length > 1) { pages.push([]); y = 130; }
+    }
+    return pages;
+  }
+  function projectPageTexture(lines, left) {
+    return surface((ctx, w, h) => {
+      ctx.fillStyle = '#e8d9b6'; ctx.fillRect(0, 0, w, h);
+      const shade = ctx.createLinearGradient(0, 0, w, 0);
+      shade.addColorStop(left ? 1 : 0, '#4d371526');
+      shade.addColorStop(left ? 0 : 1, '#fff0');
+      ctx.fillStyle = shade; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#344b39';
+      for (const line of lines || []) {
+        ctx.font = line.font;
+        ctx.fillText(line.text, 70, line.y);
+      }
+    }, 1024, 1400);
+  }
   const volumes = [
     ...projects.map((data, index) => ({ kind: 'book', index, data })),
     ...reading.map((data, index) => ({ kind: 'reading', index, data })),
@@ -133,21 +187,38 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, re
     opened.visible = false;
     root.add(opened);
     const pages = [];
+    const contentPages = isReading ? null : projectPages(project.blocks);
+    const pageMeshes = [];
     for (let side = 0; side < 2; side++) {
       const leaf = new THREE.Group();
       opened.add(leaf);
       const x = side ? .31 : -.31;
       box(x, 0, -.025, .62, .86, .04, color, leaf);
-      const texture = side
-        ? pageTexture(isReading ? project.shelf === 'recent' ? 'Recently read' : 'Currently reading' : 'Field notes', isReading ? ['View this book on Goodreads using the link below.'] : [project.description, project.note])
-        : pageTexture(project.title, [isReading ? project.author : i ? 'SYSTEMS / EXPERIMENTS' : 'FINANCE / RESEARCH'], true);
+      const texture = !isReading ? projectPageTexture(contentPages[side], !side) : side
+        ? pageTexture(project.shelf === 'recent' ? 'Recently read' : 'Currently reading', ['View this book on Goodreads using the link below.'])
+        : pageTexture(project.title, [project.author], true);
       const page = plane(texture, .59, .82, 0, leaf);
+      pageMeshes.push(page);
       page.position.x = x;
       pages.push(leaf);
     }
-    items.push({ kind, index: i, root, name: project.title, home: root.position.clone(), stage: new THREE.Vector3(-3.15, isReading ? 3.1 : 1.5, .8), scale: 2.8, closed, opened, pages, open: 0 });
+    items.push({ kind, index: i, root, name: project.title, home: root.position.clone(), stage: new THREE.Vector3(-3.15, isReading ? 3.1 : 1.5, .8), scale: 2.8, closed, opened, pages, contentPages, pageMeshes, open: 0 });
   }
 
+  function setBookPage(index, spread) {
+    const item = items.find(item => item.kind === 'book' && item.index === index);
+    for (const [side, mesh] of item.pageMeshes.entries()) {
+      const old = mesh.material.map;
+      mesh.material.map = projectPageTexture(item.contentPages[spread * 2 + side], !side);
+      mesh.material.needsUpdate = true;
+      old.dispose();
+    }
+    schedule();
+  }
+  function getBookPageCount(index) {
+    const item = items.find(item => item.kind === 'book' && item.index === index);
+    return Math.ceil(item.contentPages.length / 2);
+  }
   function animate(item, selected, reduced) {
     motion?.resolve(false);
     const from = { position: item.root.position.clone(), scale: item.root.scale.x, rotation: item.root.rotation.y, open: item.open };
@@ -186,7 +257,7 @@ export function createPhysicalObjects({ box, surface, brass, pinboard, shelf, re
     motion?.resolve(false);
     motion = null;
   }
-  return { items, animate, flip, step, cancel };
+  return { items, animate, flip, step, cancel, setBookPage, getBookPageCount };
 }
 
 export function cvTexture(surface, text, page, total) {

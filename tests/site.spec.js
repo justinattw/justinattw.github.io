@@ -155,12 +155,25 @@ test('titled books open as physical project pages, not panels', async ({ page })
   await expect(page.locator('#room-targets')).toBeVisible();
   await enter(page, 'projects');
   await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
-  await expect(page.locator('#projects .honest-note a')).toHaveAttribute('href', 'https://github.com/justinattw/rectangle');
-  for (const [index, title] of ['Momentum backtest', 'Mini container runtime', 'Rectangle'].entries()) {
+  for (const [index, title] of ['Momentum backtest', 'Mini container runtime', 'JRectangle'].entries()) {
     await page.getByRole('button', { name: `Open ${title}`, exact: true }).click();
     await expect(page.locator('#room')).toHaveAttribute('data-item', `book-${index}`);
     await expect(page.locator('#scene-reader')).toContainText(title);
-    await expect(page.locator('#scene-reader')).toContainText(index === 2 ? 'A side project' : 'not yet published');
+    await expect(page.locator('#scene-reader')).toContainText(['momentum investing', 'how containers work', 'macOS window manager'][index]);
+    await expect(page.getByRole('button', { name: 'Close book', exact: true })).toBeVisible();
+    await expect(page.locator('#project-position')).toHaveText(/^1 \/ \d+$/);
+    if (index === 2) {
+      const link = page.getByRole('link', { name: 'View on GitHub ↗', exact: true });
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute('href', 'https://github.com/justinattw/Rectangle');
+      await expect(link).toHaveAttribute('target', '_blank');
+      await page.context().route('https://github.com/justinattw/Rectangle', route => route.fulfill({ body: 'Repository' }));
+      const popupPromise = page.waitForEvent('popup');
+      await link.click();
+      const popup = await popupPromise;
+      await expect(popup).toHaveURL('https://github.com/justinattw/Rectangle');
+      await popup.close();
+    }
     await page.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
   }
@@ -264,6 +277,7 @@ test('no JavaScript and failed WebGL keep the public CV available', async ({ bro
   await plain.goto(baseURL);
   await expect(plain.locator('#cv')).toBeVisible();
   await expect(plain.locator('#work .access-card')).toHaveCount(5);
+  await expect(plain.locator('#projects a', { hasText: 'View on GitHub' })).toHaveAttribute('href', 'https://github.com/justinattw/Rectangle');
   await context.close();
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;

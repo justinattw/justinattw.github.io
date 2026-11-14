@@ -727,5 +727,5 @@ export function createRoom({ canvas, targets, onSelect, onReady, onError, onItem
     renderer.shadowMap.needsUpdate = true;
     schedule();
   }
-  return { focus, back, selectItem, reset: () => focus(null), setStyle };
+  return { focus, back, selectItem, reset: () => focus(null), setStyle, setBookPage: physical.setBookPage, getBookPageCount: physical.getBookPageCount };
 }

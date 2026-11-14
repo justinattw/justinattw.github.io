@@ -26,8 +26,12 @@ const jobs = [...document.querySelectorAll('#work .badge-body')].map(badge => ({
 }));
 const projects = [...document.querySelectorAll('#projects .project-card')].map(project => ({
   title: project.querySelector('h3').textContent,
-  description: project.querySelector('.project-copy > p').textContent,
-  note: project.querySelector('.honest-note').textContent,
+  blocks: [...project.querySelector('.project-copy').children].flatMap(element =>
+    element.classList.contains('project-markdown') ? [...element.children] : [element]
+  ).flatMap(element => element.tagName === 'UL'
+    ? [...element.children].map(item => ({ type: 'list', text: item.textContent }))
+    : [{ type: element.tagName.toLowerCase(), text: element.textContent }]),
+  links: [...project.querySelectorAll('.project-markdown a')].map(link => ({ text: link.textContent, href: link.href })),
 }));
 const reading = [...document.querySelectorAll('#reading li')].map(book => ({
   title: book.querySelector('a').textContent,
@@ -56,7 +60,7 @@ const cvPages = [
   ...[...document.querySelectorAll('#cv .education')].flatMap(education => cvPagesFor(education.querySelector('h3').textContent, [education.querySelector('p').innerText, ...[...education.querySelectorAll('div > *')].map(element => element.textContent)])),
 ];
 let room, section, selected, lastTrigger;
-let simple = false, navigation = 0, cvPage = 0;
+let simple = false, navigation = 0, cvPage = 0, projectPage = 0;
 const terminal = createTerminal({ onCV: () => showCVPage(0), onExit: back });
 
 function setSimple(value) {
@@ -87,6 +91,35 @@ function showControls() {
   controls.hidden = !section;
   backButton.textContent = selected ? (section === 'work' ? '← Pinboard' : '← Shelf') : '← Room';
   actions.replaceChildren();
+  if (selected?.kind === 'book' || selected?.kind === 'reading') {
+    const close = document.createElement('button');
+    close.type = 'button'; close.textContent = '×'; close.setAttribute('aria-label', 'Close book');
+    close.addEventListener('click', back);
+    actions.append(close);
+  }
+  if (section === 'projects' && selected?.kind === 'book') {
+    const count = room.getBookPageCount(selected.index);
+    {
+      const previous = document.createElement('button');
+      previous.type = 'button'; previous.textContent = '←'; previous.setAttribute('aria-label', 'Previous project page');
+      previous.disabled = projectPage === 0;
+      previous.addEventListener('click', () => showProjectPage(projectPage - 1));
+      const position = document.createElement('span');
+      position.id = 'project-position'; position.textContent = `${projectPage + 1} / ${count}`;
+      const next = document.createElement('button');
+      next.type = 'button'; next.textContent = '→'; next.setAttribute('aria-label', 'Next project page');
+      next.disabled = projectPage === count - 1;
+      next.addEventListener('click', () => showProjectPage(projectPage + 1));
+      actions.append(previous, position, next);
+    }
+    for (const projectLink of projects[selected.index].links) {
+      const link = document.createElement('a');
+      link.textContent = `${projectLink.text} ↗`; link.href = projectLink.href;
+      link.target = '_blank'; link.rel = 'noopener noreferrer';
+      actions.append(link);
+    }
+    return;
+  }
   if (section === 'reading') {
     const link = document.createElement('a');
     link.textContent = selected ? 'View on Goodreads ↗' : 'Goodreads ↗';
@@ -116,6 +149,12 @@ function showControls() {
   download.download = 'Justin-Wong-Resume.pdf';
   actions.append(previous, position, next, download);
 }
+function showProjectPage(index) {
+  const count = room.getBookPageCount(selected.index);
+  projectPage = Math.max(0, Math.min(index, count - 1));
+  room.setBookPage(selected.index, projectPage);
+  showControls();
+}
 async function openSection(id, trigger = document.activeElement) {
   if (!sections.has(id)) return;
   if (simple) { document.getElementById(id).scrollIntoView(); return; }
@@ -137,10 +176,14 @@ async function openSection(id, trigger = document.activeElement) {
 }
 async function selectItem(kind, index, updateHistory = true) {
   if (kind === 'cv') { showCVPage(cvPage + 1); return; }
-  if ((kind === 'book' || kind === 'reading') && selected?.kind === kind && selected.index === index) return back();
+  if ((kind === 'book' || kind === 'reading') && selected?.kind === kind && selected.index === index) return;
   const token = ++navigation;
   const alreadySelected = selected?.kind === kind && selected.index === index;
   selected = { kind, index };
+  if (kind === 'book') {
+    projectPage = 0;
+    room.setBookPage(index, 0);
+  }
   if (!alreadySelected && updateHistory) history.pushState(null, '', `#${section}/${kind}-${index}`);
   if (!await room.selectItem(kind, index) || token !== navigation) return;
   showControls();
@@ -148,7 +191,7 @@ async function selectItem(kind, index, updateHistory = true) {
   reader.textContent = kind === 'job'
     ? `${data.company}. ${data.role}. ${data.dates}. ${data.bullets.join(' ')}`
     : kind === 'reading' ? `${data.title}. ${data.author}. ${data.shelf === 'recent' ? 'Recently read' : 'Currently reading'}.`
-      : `${data.title}. ${data.description} ${data.note}`;
+      : data.blocks.map(block => block.text).join('. ');
 }
 async function back() {
   const token = ++navigation;
@@ -185,11 +228,14 @@ document.addEventListener('click', event => {
 backButton.addEventListener('click', back);
 window.addEventListener('keydown', event => {
   if (event.key === 'Escape' && !event.defaultPrevented && document.body.dataset.destination) back();
-  if (section !== 'cv' || simple || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  if (simple || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
   if (event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
   if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+    if (section !== 'cv' && selected?.kind !== 'book') return;
     event.preventDefault();
-    showCVPage(cvPage + (event.key === 'ArrowRight' ? 1 : -1));
+    const direction = event.key === 'ArrowRight' ? 1 : -1;
+    if (selected?.kind === 'book') showProjectPage(projectPage + direction);
+    else showCVPage(cvPage + direction);
   }
 });
 window.addEventListener('popstate', async () => {

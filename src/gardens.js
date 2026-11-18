@@ -3,8 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildGardens } from './gardens-model.js';
 
 const canvas = document.querySelector('#gardens-view');
-const marker = document.querySelector('.gardens-marker');
-const enter = document.querySelector('.gardens-enter');
+const focus = document.querySelector('.gardens-focus');
 const status = document.querySelector('#gardens-status');
 const orbit = document.querySelector('.gardens-orbit');
 const hint = document.querySelector('#gardens-hint');
@@ -17,9 +16,9 @@ try {
 
 function unavailable(error) {
   console.error('Unable to render Cornwall Gardens:', error);
-  status.textContent = 'The 3D view is unavailable. You can still enter the study below.';
+  status.textContent = 'The 3D view is unavailable. Try reloading with WebGL enabled.';
   status.hidden = false;
-  orbit.hidden = marker.hidden = hint.hidden = true;
+  orbit.hidden = focus.hidden = hint.hidden = true;
 }
 
 function start() {
@@ -46,34 +45,29 @@ function start() {
   const model = buildGardens(scene);
   const baseTarget = new THREE.Vector3(0, 3.5, .7);
   const homeDirection = new THREE.Vector3(.29, .59, 1).normalize();
-  const projected = new THREE.Vector3();
   const camera = new THREE.PerspectiveCamera(36, 1, .1, 240);
   const controls = new OrbitControls(camera, canvas);
   controls.enablePan = false;
-  controls.enableZoom = false;
+  controls.enableZoom = true;
+  controls.minDistance = 5;
+  controls.maxDistance = 180;
   controls.minPolarAngle = Math.PI * .16;
   controls.maxPolarAngle = Math.PI * .39;
   controls.rotateSpeed = .75;
 
-  let distance = 0, flight = 0, redraw = 0, flying = false, lost = false;
+  let distance = 0, redraw = 0, lost = false;
+  let view = 'gardens';
 
   function render() {
     if (lost) return;
     renderer.render(scene, camera);
-    if (flying) return;
-    projected.copy(model.marker).project(camera);
-    const x = (projected.x + 1) / 2 * canvas.clientWidth;
-    const y = (1 - projected.y) / 2 * canvas.clientHeight;
-    marker.hidden = camera.position.z < model.desk.z + 4 || camera.position.x < -24 ||
-      x < 58 || x > canvas.clientWidth - 58 || y < 52 || y > canvas.clientHeight;
-    if (!marker.hidden) {
-      marker.style.left = `${x}px`;
-      marker.style.top = `${y}px`;
-    }
+    canvas.dataset.view = view;
     canvas.dataset.orbit = camera.position.toArray().map(value => value.toFixed(3)).join(',');
   }
 
   function reset() {
+    view = 'gardens';
+    controls.maxDistance = Math.max(180, distance * 1.5);
     controls.target.copy(baseTarget);
     camera.position.copy(homeDirection).multiplyScalar(distance).add(baseTarget);
     controls.update();
@@ -91,9 +85,10 @@ function start() {
       distance = nextDistance;
       reset();
     } else {
-      if (!flying) camera.position.sub(controls.target).multiplyScalar(nextDistance / distance).add(controls.target);
+      if (view === 'gardens') camera.position.sub(controls.target).multiplyScalar(nextDistance / distance).add(controls.target);
       distance = nextDistance;
-      render();
+      if (view === 'workspace') frameWorkspace();
+      else render();
     }
   }
 
@@ -101,12 +96,12 @@ function start() {
     if (redraw) return;
     redraw = requestAnimationFrame(() => {
       redraw = 0;
-      if (!flying) render();
+      render();
     });
   });
   orbit.addEventListener('click', event => {
     const direction = event.target.closest('button')?.dataset.orbit;
-    if (!direction || flying || lost) return;
+    if (!direction || lost) return;
     if (direction === 'reset') {
       reset();
       return;
@@ -115,62 +110,26 @@ function start() {
     controls.update();
   });
 
-  function visit(event) {
-    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || lost ||
-        matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    event.preventDefault();
-    if (flying) return;
-    flying = true;
-    controls.enabled = false;
-    if (document.activeElement === marker) enter.focus({ preventScroll: true });
-    marker.hidden = true;
-    const href = event.currentTarget.href;
-    const startTarget = controls.target.clone();
-    const startOffset = camera.position.clone().sub(startTarget);
-    const endTarget = model.desk;
-    const startAngle = Math.atan2(startOffset.x, startOffset.z);
-    const angleDelta = Math.atan2(Math.sin(.12 - startAngle), Math.cos(.12 - startAngle));
-    const startRadius = Math.hypot(startOffset.x, startOffset.z);
-    const look = new THREE.Vector3();
-    let begin;
-    function advance(now) {
-      begin ??= now;
-      const step = Math.min(1, (now - begin) / 1050);
-      // Swing toward the open facade before closing in from the front.
-      const angle = startAngle + angleDelta * (1 - (1 - step) ** 4);
-      const travel = step * step * (3 - 2 * step);
-      const radius = THREE.MathUtils.lerp(startRadius, 1.95, travel);
-      look.lerpVectors(startTarget, endTarget, travel);
-      camera.position.set(look.x + Math.sin(angle) * radius,
-        look.y + THREE.MathUtils.lerp(startOffset.y, .88, travel), look.z + Math.cos(angle) * radius);
-      camera.lookAt(look);
-      render();
-      if (step < 1) flight = requestAnimationFrame(advance);
-      else location.assign(href);
-    }
-    flight = requestAnimationFrame(advance);
-  }
-
-  function restore() {
-    if (!flying) return;
-    cancelAnimationFrame(flight);
-    flying = false;
-    controls.enabled = true;
-    reset();
+  function frameWorkspace() {
+    if (lost) return;
+    view = 'workspace';
+    controls.target.copy(model.desk).add(new THREE.Vector3(-.47, 0, .8));
+    const radius = Math.max(13, 14 / camera.aspect);
+    controls.maxDistance = Math.max(180, radius * 2);
+    camera.position.copy(new THREE.Vector3(.13, .52, 1).normalize())
+      .multiplyScalar(radius).add(controls.target);
+    controls.update();
+    render();
   }
 
   resize();
   new ResizeObserver(resize).observe(canvas);
-  window.addEventListener('pagehide', () => cancelAnimationFrame(flight));
-  window.addEventListener('pageshow', event => { if (event.persisted) restore(); });
   canvas.addEventListener('webglcontextlost', () => {
     lost = true;
-    cancelAnimationFrame(flight);
     controls.enabled = false;
     unavailable(new Error('WebGL context lost'));
   });
-  marker.addEventListener('click', visit);
-  enter.addEventListener('click', visit);
+  focus.addEventListener('click', frameWorkspace);
   status.hidden = true;
-  orbit.hidden = hint.hidden = false;
+  orbit.hidden = hint.hidden = focus.hidden = false;
 }

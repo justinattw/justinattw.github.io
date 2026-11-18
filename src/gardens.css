@@ -50,22 +50,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   color: #ede5d3;
 }
 .gardens:has(.gardens-noscript) #gardens-status { display: none; }
-.gardens-marker {
-  position: absolute;
-  transform: translate(-50%, -100%);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 13px 8px 9px;
-  min-height: 44px;
-  white-space: nowrap;
-  background: #18251e;
-  border: 1px solid #c5aa75;
-  border-radius: 24px;
-  font: .9rem Georgia, serif;
-  box-shadow: 0 4px 12px #10161080;
-}
-.gardens-marker span { color: #e1bc78; }
 .gardens-controls {
   display: flex;
   flex-wrap: wrap;
@@ -86,7 +70,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .gardens-orbit button[data-orbit="left"], .gardens-orbit button[data-orbit="right"] { font-size: 1.15rem; }
 #gardens-hint { margin: 0; color: #cbc3ad; font-size: .75rem; }
 #gardens-hint span { margin: 0 4px; }
-.gardens-enter {
+.gardens-focus {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -94,11 +78,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   margin-inline-start: auto;
   padding: 0 12px;
   background: #dcc38f;
+  border: 0;
   color: #1b261e;
   font: 1rem Georgia, serif;
 }
-.gardens-marker:hover, .gardens-orbit button:hover { background: #304337; }
-.gardens-enter:hover { background: #f0d7a4; }
+.gardens-orbit button:hover { background: #304337; }
+.gardens-focus:hover { background: #f0d7a4; }
 @media (max-width: 590px) {
   .gardens-stage { height: clamp(300px, calc(100svh - 235px), 620px); }
   #gardens-hint { order: 2; flex-basis: 100%; }

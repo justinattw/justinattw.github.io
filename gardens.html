@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#161d19">
-    <meta name="description" content="Orbit a miniature of Cornwall Gardens and visit the study upstairs.">
+    <meta name="description" content="Orbit a miniature of Cornwall Gardens and inspect its top-floor workspace in 3D.">
     <title>Justin Wong · Cornwall Gardens</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/src/gardens.css">
@@ -18,13 +18,12 @@
     <main>
       <!-- An architectural miniature in the study's paper, brass and green palette.
            The terrace sits across the garden, with the lamp-lit cutaway above the roofline.
-           Orbit first, then follow the brass study marker or the fixed link below. -->
+           The workspace is part of this model, not a portal to the portfolio room. -->
       <h1>Cornwall Gardens</h1>
       <div class="gardens-stage">
         <canvas id="gardens-view" role="img" aria-label="Miniature garden square bordered by stucco terraces, with a desk in the enlarged townhouse's open top floor."></canvas>
-        <a class="gardens-marker" href="./" aria-label="Enter the top-floor study" hidden><span aria-hidden="true">+</span> The study</a>
         <p id="gardens-status" role="status">Building the miniature…</p>
-        <noscript><p class="gardens-noscript">Enable JavaScript to orbit the model, or go straight to the study.</p></noscript>
+        <noscript><p class="gardens-noscript">Enable JavaScript to explore this 3D model.</p></noscript>
       </div>
       <div class="gardens-controls">
         <div class="gardens-orbit" role="group" aria-label="Orbit controls" hidden>
@@ -32,8 +31,8 @@
           <button type="button" data-orbit="right" aria-label="Rotate right">↷</button>
           <button type="button" data-orbit="reset">Reset view</button>
         </div>
-        <p id="gardens-hint" hidden>Drag to orbit <span aria-hidden="true">·</span> Illustrative, not to scale</p>
-        <a class="gardens-enter" href="./">Enter the study <span aria-hidden="true">↗</span></a>
+        <p id="gardens-hint" hidden>Drag to orbit, scroll or pinch to zoom <span aria-hidden="true">·</span> Illustrative, not to scale</p>
+        <button class="gardens-focus" type="button" hidden>View top floor</button>
       </div>
     </main>
   </body>

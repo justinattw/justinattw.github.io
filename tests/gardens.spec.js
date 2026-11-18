@@ -1,14 +1,13 @@
 import { expect, test } from '@playwright/test';
 
-test('orbit the gardens, reset, and enter the existing study', async ({ page, isMobile }) => {
+test('orbit, zoom to the top floor without navigation, and reset', async ({ page, isMobile }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/gardens.html');
   const canvas = page.locator('#gardens-view');
   const reset = page.getByRole('button', { name: 'Reset view' });
-  const marker = page.getByRole('link', { name: 'Enter the top-floor study' });
   await expect(reset).toBeVisible();
-  await expect(marker).toBeVisible();
+  await expect(page.getByRole('link', { name: /Enter/ })).toHaveCount(0);
   const initial = await canvas.getAttribute('data-orbit');
   const { x, y, width, height } = await canvas.boundingBox();
   const start = { x: x + width * .30, y: y + height * .60 };
@@ -32,25 +31,23 @@ test('orbit the gardens, reset, and enter the existing study', async ({ page, is
   await rotate.press('Enter');
   await expect(canvas).not.toHaveAttribute('data-orbit', initial);
   await reset.click();
-  if (isMobile) await marker.tap();
-  else await marker.click();
-  await expect(page).toHaveURL('/', { timeout: 10000 });
-  await expect(page.getByRole('link', { name: 'Cornwall Gardens' })).toBeVisible();
-  await expect(page.locator('#room-targets')).toBeVisible();
-  await page.goBack();
-  await expect(marker).toBeVisible();
+  await page.getByRole('button', { name: 'View top floor' }).click();
+  await expect(canvas).toHaveAttribute('data-view', 'workspace');
+  await expect(page).toHaveURL('/gardens.html');
+  await expect(canvas).not.toHaveAttribute('data-orbit', initial);
+  await reset.click();
+  await expect(canvas).toHaveAttribute('data-view', 'gardens');
+  await expect(canvas).toHaveAttribute('data-orbit', initial);
   expect(errors).toEqual([]);
 });
 
-test('the study link still works without JavaScript', async ({ browser, baseURL }) => {
+test('without JavaScript the map explains the requirement', async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
   try {
     const page = await context.newPage();
     await page.goto('/gardens.html');
     await expect(page.locator('.gardens-noscript')).toBeVisible();
-    await page.getByRole('link', { name: 'Enter the study' }).click();
-    await expect(page).toHaveURL('/');
-    await expect(page.locator('#content')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'View top floor' })).toBeHidden();
   } finally {
     await context.close();
   }

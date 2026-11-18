@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#161d19">
+    <meta name="description" content="Orbit a miniature of Cornwall Gardens and visit the study upstairs.">
+    <title>Justin Wong · Cornwall Gardens</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/src/gardens.css">
+    <script type="module" src="/src/gardens.js"></script>
+  </head>
+  <body class="gardens">
+    <header class="gardens-header">
+      <a class="gardens-mark" href="./" aria-label="Justin Wong, home">jw.</a>
+      <span>South Kensington, London</span>
+    </header>
+    <main>
+      <!-- An architectural miniature in the study's paper, brass and green palette.
+           The terrace sits across the garden, with the lamp-lit cutaway above the roofline.
+           Orbit first, then follow the brass study marker or the fixed link below. -->
+      <h1>Cornwall Gardens</h1>
+      <div class="gardens-stage">
+        <canvas id="gardens-view" role="img" aria-label="Miniature garden square bordered by stucco terraces, with a desk in the enlarged townhouse's open top floor."></canvas>
+        <a class="gardens-marker" href="./" aria-label="Enter the top-floor study" hidden><span aria-hidden="true">+</span> The study</a>
+        <p id="gardens-status" role="status">Building the miniature…</p>
+        <noscript><p class="gardens-noscript">Enable JavaScript to orbit the model, or go straight to the study.</p></noscript>
+      </div>
+      <div class="gardens-controls">
+        <div class="gardens-orbit" role="group" aria-label="Orbit controls" hidden>
+          <button type="button" data-orbit="left" aria-label="Rotate left">↶</button>
+          <button type="button" data-orbit="right" aria-label="Rotate right">↷</button>
+          <button type="button" data-orbit="reset">Reset view</button>
+        </div>
+        <p id="gardens-hint" hidden>Drag to orbit <span aria-hidden="true">·</span> Illustrative, not to scale</p>
+        <a class="gardens-enter" href="./">Enter the study <span aria-hidden="true">↗</span></a>
+      </div>
+    </main>
+  </body>
+</html>

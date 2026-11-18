@@ -22,8 +22,10 @@ h1, h2 { font-family: Georgia, serif; font-weight: 400; }
 .skip-link:focus { top: 12px; }
 .masthead { position: fixed; top: 0; left: 0; right: 0; z-index: 3; padding: 25px 35px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(#101814b3, transparent); pointer-events: none; }
 .masthead a { pointer-events: auto; }
+.masthead-links { display: flex; align-items: center; gap: 16px; }
+.masthead-links a { display: flex; align-items: center; min-height: 44px; }
 .monogram { font: italic 30px Georgia, serif; letter-spacing: -.08em; color: var(--gold); }
-.github-link { font-size: 11px; opacity: .8; }
+.github-link, .gardens-link { font-size: 11px; opacity: .8; }
 .github-link span { padding-left: 12px; }
 .study { position: relative; }
 .room-wrap { height: 100svh; min-height: 580px; position: relative; }

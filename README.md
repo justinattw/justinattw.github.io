@@ -53,6 +53,13 @@ still and makes destination changes immediate instead of moving the camera.
 Fonts are local system fonts; the deployed site makes no external asset requests.
 The wall clock follows UK time (`Europe/London`), including GMT/BST changes.
 It refreshes each minute and when the page becomes visible again.
+
+The Cornwall Gardens link opens `/gardens.html`, an optional exterior prototype.
+`src/gardens-model.js` builds the miniature garden square, terraces and top-floor cutaway.
+The garden setting and workspace are illustrative, not a reconstruction; no street-level
+address, map data, or reference imagery is used by the site. The study entrance hands off
+to the existing portfolio page; the portfolio also works independently of the model.
+
 Reading and Projects focus separately on the upper and lower shelves. Reading
 has "Currently reading" and "Recently read" shelves, the latter limited to five books.
 Unavailable categories have unnamed decorative books instead of labels or links.

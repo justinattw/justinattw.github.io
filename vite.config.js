@@ -42,7 +42,7 @@ export default defineConfig({
   }],
   build: {
     rollupOptions: {
-      input: { portfolio: 'index.html', styles: 'styles.html' },
+      input: { portfolio: 'index.html', gardens: 'gardens.html', styles: 'styles.html' },
       output: {
         manualChunks: { three: ['three'] },
       },

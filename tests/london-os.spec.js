@@ -55,22 +55,98 @@ test('expanded OS geography retains valid georeferencing, parks, tidal water and
   }
 });
 
-test('the entire garden square shrinks twenty percent with its original proportions', async ({ page }) => {
+test('Cornwall Gardens has white façades, two buildings per side and no garden furniture', () => {
+  const normal = new THREE.Group(), compact = new THREE.Group();
+  buildGardens(normal, { uniformRoofline: true, furnish: false });
+  buildGardens(compact, { uniformRoofline: true, furnish: false, cornwallGardens: true });
+  function instances(root) {
+    return root.children.flatMap(mesh => Array.from({ length: mesh.count }, (_, index) => {
+      const matrix = new THREE.Matrix4();
+      mesh.getMatrixAt(index, matrix);
+      return {
+        color: mesh.material.color.getHexString(),
+        position: new THREE.Vector3().setFromMatrixPosition(matrix),
+        size: new THREE.Vector3().setFromMatrixScale(matrix),
+      };
+    }));
+  }
+  const before = instances(normal), after = instances(compact);
+  const close = (a, b) => Math.abs(a - b) < .001;
+  const sideBuildings = parts => parts.filter(part => close(part.size.x, 4.35) && close(part.size.z, 4.45) && part.size.y > 10);
+  expect(sideBuildings(before)).toHaveLength(6);
+  expect(sideBuildings(after)).toHaveLength(4);
+  for (const side of [-1, 1]) {
+    const buildings = sideBuildings(after).filter(part => part.position.x * side > 0);
+    expect(buildings).toHaveLength(2);
+    expect(buildings.every(part => part.color === 'f5f5f0')).toBe(true);
+    expect(buildings[0].position.z).toBeCloseTo(1.1);
+    expect(buildings[1].position.z).toBeCloseTo(5.54);
+  }
+  const gardenBefore = before.find(part => part.color === '57734b');
+  const gardenAfter = after.find(part => part.color === '57734b');
+  expect(gardenAfter.size.z).toBeCloseTo(gardenBefore.size.z - 4.44);
+  expect(gardenAfter.position.z - gardenAfter.size.z / 2).toBeCloseTo(gardenBefore.position.z - gardenBefore.size.z / 2);
+  const seats = parts => parts.filter(part => part.color === '865538' && close(part.size.x, 1.4) && close(part.size.z, .42));
+  expect(seats(before)).toHaveLength(4);
+  expect(seats(after)).toHaveLength(0);
+  expect(before.some(part => part.color === '6e8885')).toBe(true);
+  expect(after.some(part => ['6e8885', 'aaa38f', 'e2d9c4', 'cabcaa', 'f6edda'].includes(part.color))).toBe(false);
+});
+
+test('new landmarks have open archways, a courtyard and no Kensington side wings', async ({ page }) => {
+  await observeScene(page);
+  await page.goto('/london-os.html');
+  await settled(page, 'city');
+  const details = await page.evaluate(async () => {
+    const url = document.querySelector('link[rel="modulepreload"][href*="/three-"]').href;
+    const module = await import(url);
+    const Raycaster = Object.values(module).find(value => value?.prototype?.intersectObject);
+    const ray = new Raycaster();
+    function probe(name, point, direction) {
+      const root = window.londonScene.getObjectByName(name);
+      ray.set(root.localToWorld(root.position.clone().set(...point)), root.position.clone().set(...direction).transformDirection(root.matrixWorld));
+      return ray.intersectObject(root, true)[0]?.object.name ?? null;
+    }
+    const column = window.londonScene.getObjectByName("Nelson's Column");
+    const shaft = column.getObjectByName('Nelson column shaft');
+    shaft.geometry.computeBoundingBox();
+    return {
+      kensington: [-1.55, 1.55].map(x => probe('Kensington Palace', [x, 3, 1.3], [0, -1, 0])),
+      mainBlock: probe('Kensington Palace', [0, 3, 0], [0, -1, 0]) !== null,
+      courtyard: probe('Buckingham Palace', [0, 4, 0], [0, -1, 0]),
+      arches: [-.95, 0, .95, .56].map(x => probe('Marble Arch', [x, .56, 2], [0, 0, -1]) !== null),
+      columnPosition: column.position.toArray(),
+      archPosition: window.londonScene.getObjectByName('Marble Arch').position.toArray(),
+      shaftHeight: shaft.geometry.boundingBox.max.y - shaft.geometry.boundingBox.min.y,
+    };
+  });
+  expect(details.kensington).toEqual([null, null]);
+  expect(details.mainBlock).toBe(true);
+  expect(details.courtyard).toBe('Buckingham courtyard');
+  expect(details.arches).toEqual([false, false, false, true]);
+  expect(details.columnPosition[0]).toBeCloseTo(20.17);
+  expect(details.columnPosition[2]).toBeCloseTo(-11.69);
+  expect(details.archPosition[0]).toBeCloseTo(-1.48);
+  expect(details.archPosition[2]).toBeCloseTo(-17.18);
+  expect(details.shaftHeight).toBeGreaterThan(2);
+});
+
+test('the entire garden square is sixty percent of its original scale', async ({ page }) => {
   const normal = new THREE.Group();
-  buildGardens(normal, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true });
+  buildGardens(normal, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true, cornwallGardens: true });
   function dimensions(root, color) {
     const mesh = root.children.find(child => child.material.color.getHexString() === color);
     const matrix = new THREE.Matrix4();
     mesh.getMatrixAt(0, matrix);
     return new THREE.Vector3().setFromMatrixScale(matrix).multiplyScalar(.43).toArray();
   }
-  const original = ['57734b', '314c3b', 'e2d9c4'].map(color => dimensions(normal, color));
+  const original = ['57734b', '314c3b', 'f5f5f0'].map(color => dimensions(normal, color));
   await observeScene(page);
   await page.goto('/london-os.html');
   await settled(page, 'city');
   const compact = await page.evaluate(() => {
     const root = window.londonScene.getObjectByName('London garden square');
-    return ['57734b', '314c3b', 'e2d9c4'].map(color => {
+    return ['57734b', '314c3b', 'f5f5f0'].map(color => {
       const mesh = root.children.find(child => child.material?.color.getHexString() === color);
       const matrix = mesh.matrixWorld.clone();
       const instance = matrix.clone();
@@ -80,7 +156,7 @@ test('the entire garden square shrinks twenty percent with its original proporti
     });
   });
   for (let part = 0; part < original.length; part++) {
-    for (let axis = 0; axis < 3; axis++) expect(compact[part][axis] / original[part][axis]).toBeCloseTo(.8);
+    for (let axis = 0; axis < 3; axis++) expect(compact[part][axis] / original[part][axis]).toBeCloseTo(.6);
   }
 });
 
@@ -113,15 +189,18 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
       if (object.name.startsWith('work-history-pass-')) passes.push(object.visible && object.children.some(child => child.material?.map));
       if (object.name.startsWith('lanyard-')) straps.push(object.children.length);
     });
-    return { passes, straps, landmarks: ['Kensington Palace', 'Albert Bridge'].every(name => !!window.londonScene.getObjectByName(name)) };
+    return { passes, straps, landmarks: ['Kensington Palace', 'Albert Bridge', 'Buckingham Palace', 'London Eye', "Nelson's Column", 'Marble Arch'].every(name => !!window.londonScene.getObjectByName(name)) };
   })).toEqual({ passes: [true, true, true, true, true], straps: [4, 4, 4, 4, 4], landmarks: true });
-  const bearings = await page.evaluate(() => ['Kensington Palace', 'Albert Bridge'].map(name => {
+  const bearings = await page.evaluate(() => [['Kensington Palace', 'z'], ['Albert Bridge', 'z'], ['Buckingham Palace', 'z'], ['Eye rim', 'x'], ['Marble Arch', 'z']].map(([name, axis]) => {
     const landmark = window.londonScene.getObjectByName(name);
-    const direction = landmark.getWorldDirection(landmark.position.clone());
+    const direction = landmark.position.clone().set(axis === 'x' ? 1 : 0, 0, axis === 'z' ? 1 : 0).transformDirection(landmark.matrixWorld);
     return (Math.atan2(direction.x, -direction.z) * 180 / Math.PI + 360) % 360;
   }));
   expect(bearings[0]).toBeCloseTo(72.5, 0);
   expect(bearings[1]).toBeCloseTo(161.3, 0);
+  expect(bearings[2]).toBeCloseTo(55.3, 0);
+  expect(bearings[3]).toBeCloseTo(5.8, 0);
+  expect(bearings[4]).toBeCloseTo(166.3, 0);
   if (isMobile) {
     const intro = await page.locator('.intro').boundingBox();
     expect((await explore.boundingBox()).y).toBeGreaterThan(intro.y + intro.height);

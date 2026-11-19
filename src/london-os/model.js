@@ -62,12 +62,13 @@ export function buildLondon(scene) {
   const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const city = [], roofs = [], trees = [], trunks = [], towers = [];
   const house = project(525850, 178700);
-  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528950, 179600], [525800, 180150], [527400, 177550]].map(p => project(...p));
+  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528950, 179600], [525800, 180150], [527400, 177550], [530017, 180419], [527852, 180968]].map(p => project(...p));
+  const nearLandmark = (x, z) => landmarkPoints.some((p, index) => Math.hypot(p.x - x, p.z - z) < (index === 3 ? 6 : 3.3));
   for (let x = -145; x < 165; x += 3.5) {
     for (let z = -130; z < 125; z += 3.5) {
       const px = x + Math.sin(z * .045) * 2.3 + random() * .7, pz = z + Math.sin(x * .04) * 2 + random() * .7;
       if (Math.abs(px - house.x) < 9 && Math.abs(pz - house.z) < 9) continue;
-      if (landmarkPoints.some(p => Math.hypot(p.x - px, p.z - pz) < 3.3)) continue;
+      if (nearLandmark(px, pz)) continue;
       if ([[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]].some(([dx, dz]) => occupied(px + dx, pz + dz))) continue;
       const height = .6 + random() * 1.7;
       const width = 1.65 + random() * .7, depth = 1.65 + random() * .7;
@@ -82,7 +83,7 @@ export function buildLondon(scene) {
     for (let x = left + .5; x < right; x += 2.1) {
       for (let z = near + .5; z < far; z += 2.1) {
         const px = x + random() * 1.3, pz = z + random() * 1.3;
-        if (!inFeature(px, pz, area) || waterAreas.some(water => inFeature(px, pz, water)) || random() > .55) continue;
+        if (!inFeature(px, pz, area) || nearLandmark(px, pz) || waterAreas.some(water => inFeature(px, pz, water)) || random() > .55) continue;
         const size = .55 + random() * .55;
         trunks.push([px, .34, pz, .12, .65, .12]);
         trees.push([px, .7 + size * .25, pz, size, size * 1.25, size]);
@@ -108,8 +109,8 @@ export function buildLondon(scene) {
 
   const neighbourhood = new THREE.Group();
   neighbourhood.name = 'London garden square';
-  const studio = buildGardens(neighbourhood, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true });
-  neighbourhood.scale.setScalar(.43 * .8);
+  const studio = buildGardens(neighbourhood, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true, cornwallGardens: true });
+  neighbourhood.scale.setScalar(.43 * .8 * .75);
   neighbourhood.position.copy(house);
   scene.add(neighbourhood);
   neighbourhood.updateMatrixWorld(true);
@@ -119,6 +120,14 @@ export function buildLondon(scene) {
   let office;
 
   // Original, deliberately toy-like silhouettes at approximate BNG landmark locations.
+  function landmark(name, index, degrees = 0) {
+    const group = new THREE.Group();
+    group.name = name;
+    group.position.copy(landmarkPoints[index]);
+    group.rotation.y = THREE.MathUtils.degToRad(degrees);
+    scene.add(group);
+    return group;
+  }
   function hall() {
     const p = landmarkPoints[0];
     mesh(cylinder, '#ad7253', p.x, .95, p.z, 1.8, 1.9, 1.55);
@@ -148,11 +157,12 @@ export function buildLondon(scene) {
     box('#d9c18c', p.x, 5.35, p.z, .08, .5, .08);
   }
   function eye() {
-    const p = landmarkPoints[2];
+    // The wheel's horizontal diameter follows a grid bearing of about 5.8 degrees.
+    const group = landmark('London Eye', 2, 84.18);
     const wheel = new THREE.Group();
-    wheel.position.set(p.x, 2.65, p.z);
-    wheel.rotation.y = -.2;
+    wheel.position.y = 2.65;
     const rim = new THREE.Mesh(new THREE.TorusGeometry(2.3, .065, 6, 64), material('#e4dfc8'));
+    rim.name = 'Eye rim';
     wheel.add(rim);
     for (let i = 0; i < 24; i++) {
       const angle = i * Math.PI / 12;
@@ -163,31 +173,63 @@ export function buildLondon(scene) {
       pod.position.set(x, y, 0);
       wheel.add(pod);
     }
-    scene.add(wheel);
+    group.add(wheel);
     for (const direction of [-1, 1]) {
-      const support = box('#ded6bb', p.x + direction * .43, 1.35, p.z, .13, 2.8, .13);
+      const support = box('#ded6bb', direction * .43, 1.35, 0, .13, 2.8, .13, group);
       support.rotation.z = direction * .32;
     }
   }
   function palace() {
-    const p = landmarkPoints[3];
-    box('#dfd1af', p.x, .7, p.z, 3.4, 1.4, 2.4);
-    box('#c6bc9d', p.x, 1.48, p.z, 3.6, .18, 2.5);
-    for (let i = -3; i <= 3; i++) box('#8b9689', p.x + i * .42, .88, p.z + 1.22, .18, .46, .05);
+    // The principal front faces northeast, about 55.3 degrees from grid north.
+    const group = landmark('Buckingham Palace', 3, 124.74);
+    const stone = '#e5ddcb', trim = '#f2e9d8', window = '#6e858b', roof = '#747c7c';
+    box('#c6bdab', 0, .07, .7, 5.6, .12, 4.7, group);
+    box('#b7afa0', 0, .15, -.1, 3.35, .08, 1.8, group).name = 'Buckingham courtyard';
+    box(stone, 0, .86, 1.2, 4.8, 1.5, .72, group).name = 'Buckingham east front';
+    box(stone, 0, .8, -1.3, 4.8, 1.4, .65, group);
+    for (const side of [-1, 1]) {
+      box(stone, side * 2.05, .8, -.05, .7, 1.4, 2.5, group);
+      box(roof, side * 2.05, 1.53, -.05, .75, .12, 2.6, group);
+      box(trim, side * 2.05, .19, -.05, .79, .13, 2.6, group);
+      for (const z of [-.85, -.2, .45]) for (const y of [.6, 1.13]) {
+        box(window, side * 2.415, y, z, .025, .27, .22, group);
+      }
+      box(trim, side * 2.1, 1.02, 1.63, .63, 1.38, .2, group);
+      for (const y of [.63, 1.22]) box(window, side * 2.1, y, 1.74, .22, .31, .035, group);
+    }
+    for (const z of [-1.3, 1.2]) {
+      box(roof, 0, 1.62, z, 4.9, .12, .8, group);
+      box(trim, 0, 1.75, z, 4.95, .15, .85, group);
+      for (const x of [-1.7, -1.1, 1.1, 1.7]) box(stone, x, 1.93, z - .12, .14, .3, .16, group);
+    }
+    for (const y of [.23, 1.05, 1.53]) box(trim, 0, y, 1.59, 4.85, .09, .1, group);
+    for (let x = -1.65; x <= 1.65; x += .33) for (const y of [.62, 1.25]) {
+      box(trim, x, y, 1.62, .22, .35, .06, group);
+      box(window, x, y, 1.66, .14, .27, .035, group);
+    }
+    box(trim, 0, 1.03, 1.68, 1.22, 1.42, .22, group);
+    for (const x of [-.46, 0, .46]) {
+      box(window, x, 1.14, 1.81, .21, .53, .035, group);
+      for (const offset of [-.16, .16]) box(trim, x + offset, 1.12, 1.84, .065, .8, .1, group);
+    }
+    box(trim, 0, .82, 1.93, 1.42, .12, .5, group).name = 'Buckingham balcony';
+    for (let x = -.65; x <= .65; x += .13) box('#8b8170', x, .99, 2.13, .025, .25, .025, group);
+    box(trim, 0, 1.13, 2.13, 1.44, .06, .06, group);
+    box('#aa9c80', 0, 1.91, 1.22, .5, .17, .18, group);
+    box('#b3ab95', 0, 2.22, 1.18, .025, .55, .025, group);
+    box('#a54e4a', .18, 2.38, 1.18, .34, .18, .025, group);
+    for (const side of [-1, 1]) {
+      for (let x = .38; x <= 2.45; x += .16) box('#414946', side * x, .43, 2.8, .025, .56, .025, group);
+      box('#414946', side * 1.42, .67, 2.8, 2.13, .04, .04, group);
+      box(trim, side * 2.5, .43, 2.8, .22, .8, .22, group);
+      mesh(new THREE.SphereGeometry(.11, 8, 6), '#b7a16b', side * 2.5, .91, 2.8, 1, 1, 1, group);
+    }
   }
   function kensingtonPalace() {
-    const p = landmarkPoints[4], group = new THREE.Group();
-    group.name = 'Kensington Palace';
-    group.position.copy(p);
     // The east front faces the Round Pond at a BNG grid bearing of about 72.5 degrees.
-    group.rotation.y = THREE.MathUtils.degToRad(107.48);
-    scene.add(group);
+    const group = landmark('Kensington Palace', 4, 107.48);
     box('#aa6e57', 0, .75, 0, 3.3, 1.5, 1.2, group);
-    for (const side of [-1, 1]) {
-      box('#b77b60', side * 1.55, .8, .65, .9, 1.6, 1.9, group);
-      box('#5e6669', side * 1.55, 1.65, .65, 1.05, .15, 2.05, group);
-      for (const z of [.2, 1]) box('#cba78c', side * 1.65, 1.95, z, .18, .52, .2, group);
-    }
+    for (const x of [-1.15, 1.15]) for (const z of [-.35, .35]) box('#cba78c', x, 1.88, z, .18, .52, .2, group);
     for (const y of [.15, .83, 1.5]) box('#e7d5b6', 0, y, .63, 3.4, .1, .1, group);
     box('#5e6669', 0, 1.6, 0, 3.45, .16, 1.3, group);
     for (let x = -1.2; x <= 1.2; x += .4) for (const y of [.48, 1.15]) {
@@ -198,12 +240,8 @@ export function buildLondon(scene) {
     box('#394f50', 0, .4, .84, .25, .65, .05, group);
   }
   function albertBridge() {
-    const group = new THREE.Group();
-    group.name = 'Albert Bridge';
-    group.position.copy(landmarkPoints[5]);
     // Local +z follows the bridge south-southeast, about 161.3 degrees from grid north.
-    group.rotation.y = THREE.MathUtils.degToRad(18.69);
-    scene.add(group);
+    const group = landmark('Albert Bridge', 5, 18.69);
     box('#e5cfbd', 0, .34, 0, .62, .14, 3.8, group);
     for (const side of [-1, 1]) {
       box('#f0d7d0', side * .31, .55, 0, .045, .12, 3.8, group);
@@ -222,7 +260,61 @@ export function buildLondon(scene) {
     }
     for (const z of [-1.12, 1.12]) box('#e5d7c2', 0, 1.4, z, .75, .1, .12, group);
   }
-  hall(); westminster(); eye(); palace(); kensingtonPalace(); albertBridge();
+  function nelsonsColumn() {
+    const group = landmark("Nelson's Column", 6);
+    const stone = '#c9c4b1', bronze = '#58665c';
+    for (const [y, width] of [[.08, 2.7], [.2, 2.2], [.34, 1.6]]) box(stone, 0, y, 0, width, .15, width, group);
+    box(stone, 0, .74, 0, .77, .7, .77, group);
+    for (const side of [-1, 1]) {
+      box(bronze, side * .395, .75, 0, .025, .36, .44, group);
+      box(bronze, 0, .75, side * .395, .44, .36, .025, group);
+    }
+    mesh(cylinder, stone, 0, 1.12, 0, .3, .16, .3, group);
+    mesh(new THREE.CylinderGeometry(.17, .22, 2.5, 16), stone, 0, 2.4, 0, 1, 1, 1, group).name = 'Nelson column shaft';
+    mesh(cylinder, bronze, 0, 3.7, 0, .29, .16, .29, group);
+    for (const x of [-.21, .21]) for (const z of [-.21, .21]) mesh(new THREE.SphereGeometry(.09, 8, 6), bronze, x, 3.72, z, 1, 1, 1, group);
+    box(stone, 0, 3.86, 0, .62, .12, .62, group);
+    mesh(cylinder, '#a4a491', 0, 4.09, 0, .12, .38, .1, group);
+    mesh(new THREE.SphereGeometry(.095, 8, 6), '#a4a491', 0, 4.37, 0, 1, 1, 1, group);
+    box('#858977', 0, 4.45, 0, .29, .06, .14, group);
+    box('#a4a491', .16, 4.15, 0, .25, .08, .1, group).rotation.z = -.5;
+    for (const x of [-.85, .85]) for (const z of [-.85, .85]) {
+      const lion = new THREE.Group();
+      lion.position.set(x, .44, z);
+      lion.rotation.y = Math.atan2(x, z);
+      group.add(lion);
+      mesh(new THREE.IcosahedronGeometry(1, 1), bronze, 0, 0, 0, .18, .16, .36, lion);
+      mesh(new THREE.IcosahedronGeometry(1, 1), bronze, 0, .12, .22, .2, .22, .18, lion);
+      for (const side of [-1, 1]) box(bronze, side * .13, -.05, .34, .09, .1, .25, lion);
+    }
+  }
+  function marbleArch() {
+    const group = landmark('Marble Arch', 7, 13.69);
+    const stone = '#eee8d8', trim = '#faf2e1';
+    const wall = new THREE.Shape();
+    wall.moveTo(-1.4, 0); wall.lineTo(1.4, 0); wall.lineTo(1.4, 1.62); wall.lineTo(-1.4, 1.62); wall.closePath();
+    for (const [x, radius, spring] of [[0, .43, .85], [-.95, .25, .64], [.95, .25, .64]]) {
+      const opening = new THREE.Path();
+      opening.moveTo(x - radius, .08); opening.lineTo(x + radius, .08);
+      opening.lineTo(x + radius, spring); opening.absarc(x, spring, radius, 0, Math.PI, false);
+      opening.lineTo(x - radius, .08); opening.closePath();
+      wall.holes.push(opening);
+    }
+    mesh(new THREE.ExtrudeGeometry(wall, { depth: .7, bevelEnabled: false, curveSegments: 12 }), stone, 0, .06, -.35, 1, 1, 1, group).name = 'Marble Arch masonry';
+    box(stone, 0, .05, 0, 3, .1, .9, group);
+    box(trim, 0, 1.64, 0, 2.94, .16, .82, group);
+    box(stone, 0, 1.88, 0, 2.72, .32, .72, group);
+    box(trim, 0, 2.07, 0, 2.94, .08, .82, group);
+    for (const side of [-1, 1]) {
+      for (const x of [-1.3, -.56, .56, 1.3]) {
+        mesh(cylinder, trim, x, .82, side * .4, .055, 1.36, .055, group);
+        box(trim, x, 1.5, side * .4, .16, .1, .16, group);
+      }
+      for (const x of [-.95, .95]) box('#d7cebb', x, 1.3, side * .37, .4, .32, .035, group);
+      box('#d7cebb', 0, 1.88, side * .375, .75, .14, .025, group);
+    }
+  }
+  hall(); westminster(); eye(); palace(); kensingtonPalace(); albertBridge(); nelsonsColumn(); marbleArch();
   return {
     desk, marker, roomCenter, house, featureCount: areas.length, neighbourhood,
     ensureOffice(data, schedule) {

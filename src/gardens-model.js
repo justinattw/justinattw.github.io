@@ -2,8 +2,9 @@ import * as THREE from 'three';
 
 const stone = '#e2d9c4', trim = '#f6edda', slate = '#4c5556';
 const iron = '#28312b', glass = '#455d60', wood = '#865538';
+const facadeColors = new Set([stone, trim, '#cabcaa', '#a69f8f', '#bdb29c', '#a69985']);
 
-export function buildGardens(scene, { uniformRoofline = false, flatGround = false, furnish = true, colorFor = color => color, pinboardWall = false } = {}) {
+export function buildGardens(scene, { uniformRoofline = false, flatGround = false, furnish = true, colorFor = color => color, pinboardWall = false, cornwallGardens = false } = {}) {
   const geometries = {
     box: new THREE.BoxGeometry(),
     column: new THREE.CylinderGeometry(.43, .5, 1, 16),
@@ -91,41 +92,48 @@ export function buildGardens(scene, { uniformRoofline = false, flatGround = fals
   const house = { x: 0, z: -9.7, width: 7.7, depth: 6.5, height: 9.65 };
   const { x, z, width, depth, height } = house;
   const wallZ = z - depth / 2 + .48, floor = height + .11;
+  const sideBuildings = cornwallGardens ? 2 : 3;
+  const shorterBy = (3 - sideBuildings) * 4.44;
+  const gardenZ = 4.8 - shorterBy / 2;
   if (!flatGround) {
     box('#766755', 0, -.77, .25, 40, 1.35, 33.4);
     box('#5a615c', 0, -.08, .25, 39.9, .18, 33.3);
   }
   box('#d0c4ae', 0, .085, -9.75, 38.8, .16, 11.6);
-  box('#bdb49d', 0, .10, 4.8, 24.7, .23, 16.4);
-  box('#57734b', 0, .23, 4.8, 24.25, .08, 15.9);
-  box('#c1af88', 0, .29, 4.8, .98, .04, 15.85);
-  box('#c1af88', 0, .29, 4.8, 24.15, .04, .94);
-  box('#c1af88', 0, .29, 4.8, 2.85, .045, 2.85);
-  column('#aaa38f', 0, .45, 4.8, 1.9, .28, 1.9);
-  column('#6e8885', 0, .60, 4.8, 1.65, .04, 1.65);
-  column('#b4ab96', 0, .82, 4.8, .22, .45, .22);
-  column('#b4ab96', 0, 1.04, 4.8, .65, .11, .65);
+  box('#bdb49d', 0, .10, gardenZ, 24.7, .23, 16.4 - shorterBy);
+  box('#57734b', 0, .23, gardenZ, 24.25, .08, 15.9 - shorterBy);
+  box('#c1af88', 0, .29, gardenZ, .98, .04, 15.85 - shorterBy);
+  box('#c1af88', 0, .29, gardenZ, 24.15, .04, .94);
+  if (!cornwallGardens) {
+    box('#c1af88', 0, .29, gardenZ, 2.85, .045, 2.85);
+    column('#aaa38f', 0, .45, gardenZ, 1.9, .28, 1.9);
+    column('#6e8885', 0, .60, gardenZ, 1.65, .04, 1.65);
+    column('#b4ab96', 0, .82, gardenZ, .22, .45, .22);
+    column('#b4ab96', 0, 1.04, gardenZ, .65, .11, .65);
+  }
   for (const side of [-1, 1]) {
-    railing(side * 12.22, .25, 4.8, 16.12, Math.PI / 2);
-    for (const edge of [-3.28, 12.88]) railing(side * 6.52, .25, edge, 11.39);
+    railing(side * 12.22, .25, gardenZ, 16.12 - shorterBy, Math.PI / 2);
+    for (const edge of [-3.28, 12.88 - shorterBy]) railing(side * 6.52, .25, edge, 11.39);
     for (let i = 0; i < 3; i++) {
       const nearX = side * (6.2 + i * 4.5);
       terrace(nearX, -9.7, 4.4, 5.2, uniformRoofline ? height + 2.55 : 5.65 + (2 - i) * .32, 0, false, i % 2 ? '#cabcaa' : stone);
+    }
+    for (let i = 0; i < sideBuildings; i++) {
       terrace(side * 16.65, 1.1 + i * 4.44, 4.35, 4.45, uniformRoofline ? height + 2.55 : 4.6 + i * .25, -side * Math.PI / 2);
     }
-    box('#cec1a8', side * 16.7, .09, 5.8, 6.4, .16, 17.1);
+    box('#cec1a8', side * 16.7, .09, 5.8 - shorterBy / 2, 6.4, .16, 17.1 - shorterBy);
     railing(side * 3.2, .15, -5.08, 2.5);
-    for (const zz of [-1.4, 10.6]) {
+    for (const zz of [-1.4, 10.6 - shorterBy]) {
       for (const xx of [3.1, 8.0, 10.55]) tree(xx * side, zz, (xx === 3.1 ? .74 : 1.08));
     }
-    for (const zz of [2.4, 7.3]) tree(side * 11.18, zz, .86);
-    for (const zz of [2.45, 7.15]) {
+    for (const zz of cornwallGardens ? [gardenZ] : [2.4, 7.3]) tree(side * 11.18, zz, .86);
+    for (const zz of cornwallGardens ? [] : [2.45, 7.15]) {
       const xx = side * 4.05;
       box(wood, xx, .63, zz, 1.40, .10, .42);
       box(wood, xx, .89, zz + .18, 1.40, .30, .07);
       for (const leg of [-.52, .52]) box(iron, xx + leg, .45, zz, .08, .36, .34);
     }
-    for (const zz of [-4.3, 13.6]) {
+    for (const zz of [-4.3, 13.6 - shorterBy]) {
       column(iron, side * 8.25, .9, zz, .09, 1.8, .09);
       box('#ccb681', side * 8.25, 1.96, zz, .23, .36, .23);
       roof(side * 8.25, 2.2, zz, .32, .18, .32);
@@ -184,7 +192,7 @@ export function buildGardens(scene, { uniformRoofline = false, flatGround = fals
   }
 
   for (const { type, color, transforms } of batches.values()) {
-    const material = new THREE.MeshStandardMaterial({ color: colorFor(color), roughness: .88 });
+    const material = new THREE.MeshStandardMaterial({ color: colorFor(cornwallGardens && facadeColors.has(color) ? '#f5f5f0' : color), roughness: .88 });
     const mesh = new THREE.InstancedMesh(geometries[type], material, transforms.length);
     transforms.forEach((matrix, i) => mesh.setMatrixAt(i, matrix));
     mesh.castShadow = true;

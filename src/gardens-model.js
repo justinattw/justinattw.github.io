@@ -3,7 +3,7 @@ import * as THREE from 'three';
 const stone = '#e2d9c4', trim = '#f6edda', slate = '#4c5556';
 const iron = '#28312b', glass = '#455d60', wood = '#865538';
 
-export function buildGardens(scene, { uniformRoofline = false, flatGround = false, furnish = true, colorFor = color => color, gardenScale = 1, pinboardWall = false } = {}) {
+export function buildGardens(scene, { uniformRoofline = false, flatGround = false, furnish = true, colorFor = color => color, pinboardWall = false } = {}) {
   const geometries = {
     box: new THREE.BoxGeometry(),
     column: new THREE.CylinderGeometry(.43, .5, 1, 16),
@@ -12,12 +12,7 @@ export function buildGardens(scene, { uniformRoofline = false, flatGround = fals
     roof: new THREE.CylinderGeometry(.32, Math.SQRT1_2, 1, 4, 1, false, Math.PI / 4),
   };
   const batches = new Map(), part = new THREE.Object3D();
-  let gardenPart = false;
   function shape(type, color, x, y, z, w, h, d, turn = 0) {
-    if (gardenPart) {
-      x *= gardenScale; z = 4.8 + (z - 4.8) * gardenScale;
-      w *= gardenScale; d *= gardenScale;
-    }
     const key = `${type}:${color}`;
     if (!batches.has(key)) batches.set(key, { type, color, transforms: [] });
     part.position.set(x, y, z);
@@ -101,7 +96,6 @@ export function buildGardens(scene, { uniformRoofline = false, flatGround = fals
     box('#5a615c', 0, -.08, .25, 39.9, .18, 33.3);
   }
   box('#d0c4ae', 0, .085, -9.75, 38.8, .16, 11.6);
-  gardenPart = true;
   box('#bdb49d', 0, .10, 4.8, 24.7, .23, 16.4);
   box('#57734b', 0, .23, 4.8, 24.25, .08, 15.9);
   box('#c1af88', 0, .29, 4.8, .98, .04, 15.85);
@@ -111,19 +105,15 @@ export function buildGardens(scene, { uniformRoofline = false, flatGround = fals
   column('#6e8885', 0, .60, 4.8, 1.65, .04, 1.65);
   column('#b4ab96', 0, .82, 4.8, .22, .45, .22);
   column('#b4ab96', 0, 1.04, 4.8, .65, .11, .65);
-  gardenPart = false;
   for (const side of [-1, 1]) {
-    gardenPart = true;
     railing(side * 12.22, .25, 4.8, 16.12, Math.PI / 2);
     for (const edge of [-3.28, 12.88]) railing(side * 6.52, .25, edge, 11.39);
-    gardenPart = false;
     for (let i = 0; i < 3; i++) {
       const nearX = side * (6.2 + i * 4.5);
       terrace(nearX, -9.7, 4.4, 5.2, uniformRoofline ? height + 2.55 : 5.65 + (2 - i) * .32, 0, false, i % 2 ? '#cabcaa' : stone);
       terrace(side * 16.65, 1.1 + i * 4.44, 4.35, 4.45, uniformRoofline ? height + 2.55 : 4.6 + i * .25, -side * Math.PI / 2);
     }
     box('#cec1a8', side * 16.7, .09, 5.8, 6.4, .16, 17.1);
-    gardenPart = true;
     railing(side * 3.2, .15, -5.08, 2.5);
     for (const zz of [-1.4, 10.6]) {
       for (const xx of [3.1, 8.0, 10.55]) tree(xx * side, zz, (xx === 3.1 ? .74 : 1.08));
@@ -140,7 +130,6 @@ export function buildGardens(scene, { uniformRoofline = false, flatGround = fals
       box('#ccb681', side * 8.25, 1.96, zz, .23, .36, .23);
       roof(side * 8.25, 2.2, zz, .32, .18, .32);
     }
-    gardenPart = false;
   }
   function tree(x, z, s) {
     column('#67513f', x, .97 * s, z, .24 * s, 1.95 * s, .24 * s);

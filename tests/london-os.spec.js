@@ -9,6 +9,21 @@ async function settled(page, view) {
   await expect(canvas).toHaveAttribute('data-transition', 'false');
 }
 
+async function observeScene(page) {
+  await page.addInitScript(() => {
+    window.__THREE_DEVTOOLS__ = new EventTarget();
+    window.__THREE_DEVTOOLS__.addEventListener('observe', ({ detail: renderer }) => {
+      if (!renderer.isWebGLRenderer) return;
+      const render = renderer.render;
+      renderer.render = function(scene, camera) {
+        window.londonScene = scene;
+        window.londonCamera = camera;
+        return render.call(this, scene, camera);
+      };
+    });
+  });
+}
+
 test('expanded OS geography retains valid georeferencing, parks, tidal water and triangles', () => {
   for (const name of ['Hyde Park', 'Kensington Gardens', "Regent's Park", "St James's Park", 'Battersea Park', 'Hampstead Heath']) {
     expect(geography.features.some(feature => feature.kind === 'park' && feature.name === name)).toBe(true);
@@ -40,38 +55,39 @@ test('expanded OS geography retains valid georeferencing, parks, tidal water and
   }
 });
 
-test('garden dimensions shrink twenty percent without shrinking the room', () => {
-  const normal = new THREE.Group(), compact = new THREE.Group();
-  buildGardens(normal, { furnish: false });
-  buildGardens(compact, { furnish: false, gardenScale: .8 });
-  function transform(root, color) {
+test('the entire garden square shrinks twenty percent with its original proportions', async ({ page }) => {
+  const normal = new THREE.Group();
+  buildGardens(normal, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true });
+  function dimensions(root, color) {
     const mesh = root.children.find(child => child.material.color.getHexString() === color);
     const matrix = new THREE.Matrix4();
     mesh.getMatrixAt(0, matrix);
-    return matrix;
+    return new THREE.Vector3().setFromMatrixScale(matrix).multiplyScalar(.43).toArray();
   }
-  const before = new THREE.Vector3().setFromMatrixScale(transform(normal, '57734b'));
-  const after = new THREE.Vector3().setFromMatrixScale(transform(compact, '57734b'));
-  expect(after.x / before.x).toBeCloseTo(.8);
-  expect(after.z / before.z).toBeCloseTo(.8);
-  expect(transform(compact, '314c3b').elements).toEqual(transform(normal, '314c3b').elements);
+  const original = ['57734b', '314c3b', 'e2d9c4'].map(color => dimensions(normal, color));
+  await observeScene(page);
+  await page.goto('/london-os.html');
+  await settled(page, 'city');
+  const compact = await page.evaluate(() => {
+    const root = window.londonScene.getObjectByName('London garden square');
+    return ['57734b', '314c3b', 'e2d9c4'].map(color => {
+      const mesh = root.children.find(child => child.material?.color.getHexString() === color);
+      const matrix = mesh.matrixWorld.clone();
+      const instance = matrix.clone();
+      mesh.getMatrixAt(0, instance);
+      matrix.multiply(instance);
+      return root.scale.clone().setFromMatrixScale(matrix).toArray();
+    });
+  });
+  for (let part = 0; part < original.length; part++) {
+    for (let axis = 0; axis < 3; axis++) expect(compact[part][axis] / original[part][axis]).toBeCloseTo(.8);
+  }
 });
 
 test('continuous world supports mouse/touch orbit, office exploration and all portfolio objects offline', async ({ page, isMobile, baseURL }, testInfo) => {
   test.setTimeout(45000);
   const errors = [], external = [];
-  await page.addInitScript(() => {
-    window.__THREE_DEVTOOLS__ = new EventTarget();
-    window.__THREE_DEVTOOLS__.addEventListener('observe', ({ detail: renderer }) => {
-      if (!renderer.isWebGLRenderer) return;
-      const render = renderer.render;
-      renderer.render = function(scene, camera) {
-        window.londonScene = scene;
-        window.londonCamera = camera;
-        return render.call(this, scene, camera);
-      };
-    });
-  });
+  await observeScene(page);
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', route => {
     if (new URL(route.request().url()).origin !== new URL(baseURL).origin) {
@@ -99,6 +115,13 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     });
     return { passes, straps, landmarks: ['Kensington Palace', 'Albert Bridge'].every(name => !!window.londonScene.getObjectByName(name)) };
   })).toEqual({ passes: [true, true, true, true, true], straps: [4, 4, 4, 4, 4], landmarks: true });
+  const bearings = await page.evaluate(() => ['Kensington Palace', 'Albert Bridge'].map(name => {
+    const landmark = window.londonScene.getObjectByName(name);
+    const direction = landmark.getWorldDirection(landmark.position.clone());
+    return (Math.atan2(direction.x, -direction.z) * 180 / Math.PI + 360) % 360;
+  }));
+  expect(bearings[0]).toBeCloseTo(72.5, 0);
+  expect(bearings[1]).toBeCloseTo(161.3, 0);
   if (isMobile) {
     const intro = await page.locator('.intro').boundingBox();
     expect((await explore.boundingBox()).y).toBeGreaterThan(intro.y + intro.height);

@@ -107,13 +107,15 @@ export function buildLondon(scene) {
   batch(new THREE.IcosahedronGeometry(.6, 1), '#5d855c', trees);
 
   const neighbourhood = new THREE.Group();
-  const studio = buildGardens(neighbourhood, { uniformRoofline: true, flatGround: true, furnish: false, gardenScale: .8, pinboardWall: true });
-  neighbourhood.scale.setScalar(.43);
+  neighbourhood.name = 'London garden square';
+  const studio = buildGardens(neighbourhood, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true });
+  neighbourhood.scale.setScalar(.43 * .8);
   neighbourhood.position.copy(house);
   scene.add(neighbourhood);
-  const desk = studio.desk.multiplyScalar(.43).add(house);
-  const marker = studio.marker.multiplyScalar(.43).add(house);
-  const roomCenter = new THREE.Vector3(0, studio.floor + 1.1, -9.6).multiplyScalar(.43).add(house);
+  neighbourhood.updateMatrixWorld(true);
+  const desk = neighbourhood.localToWorld(studio.desk.clone());
+  const marker = neighbourhood.localToWorld(studio.marker.clone());
+  const roomCenter = neighbourhood.localToWorld(new THREE.Vector3(0, studio.floor + 1.1, -9.6));
   let office;
 
   // Original, deliberately toy-like silhouettes at approximate BNG landmark locations.
@@ -177,6 +179,8 @@ export function buildLondon(scene) {
     const p = landmarkPoints[4], group = new THREE.Group();
     group.name = 'Kensington Palace';
     group.position.copy(p);
+    // The east front faces the Round Pond at a BNG grid bearing of about 72.5 degrees.
+    group.rotation.y = THREE.MathUtils.degToRad(107.48);
     scene.add(group);
     box('#aa6e57', 0, .75, 0, 3.3, 1.5, 1.2, group);
     for (const side of [-1, 1]) {
@@ -197,7 +201,8 @@ export function buildLondon(scene) {
     const group = new THREE.Group();
     group.name = 'Albert Bridge';
     group.position.copy(landmarkPoints[5]);
-    group.rotation.y = -.32;
+    // Local +z follows the bridge south-southeast, about 161.3 degrees from grid north.
+    group.rotation.y = THREE.MathUtils.degToRad(18.69);
     scene.add(group);
     box('#e5cfbd', 0, .34, 0, .62, .14, 3.8, group);
     for (const side of [-1, 1]) {

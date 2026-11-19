@@ -1,9 +1,9 @@
 export const destinations = [
-  { id: 'cv', label: 'CV', object: 'The computer', icon: 'computer' },
-  { id: 'projects', label: 'Projects', object: 'The project shelf', icon: 'books' },
-  { id: 'reading', label: 'Reading', object: 'The reading shelf', icon: 'book' },
+  { id: 'cv', label: 'CV', object: 'Computer', icon: 'computer' },
+  { id: 'projects', label: 'Projects', object: 'Project shelf', icon: 'books' },
+  { id: 'reading', label: 'Reading', object: 'Reading shelf', icon: 'book' },
   { id: 'work', label: 'Work history', object: 'Pinboard', icon: 'badge' },
-  { id: 'hobbies', label: 'Interests', object: 'The interests cupboard', icon: 'cabinet' },
+  { id: 'hobbies', label: 'Interests', object: 'Cabinet', icon: 'cabinet' },
 ];
 
 export function readPortfolio(source) {

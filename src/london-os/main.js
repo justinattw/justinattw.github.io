@@ -112,7 +112,7 @@ function navigate(destination, { item = null, history = true, animate = true, fo
     ? item.kind === 'job' ? 'Back to passes' : 'Back to shelf'
     : destination === 'office' ? 'Back to London' : 'Back to study';
   document.querySelector('#place-name').textContent = destination === 'city' || destination === 'office'
-    ? 'The Study' : chapters.find(chapter => chapter.id === destination).object;
+    ? 'Study' : chapters.find(chapter => chapter.id === destination).object;
   if (!card.hidden || (ready && destination === 'cv')) showContent();
   if (history) {
     const hash = destination === 'city' ? '' : `#${destination}${item ? `/${item.kind}-${item.index}` : ''}`;
@@ -268,24 +268,6 @@ function showContent() {
       }
       content.prepend(list);
     }
-  }
-  if (view === 'work') {
-    const profiles = document.createElement('nav');
-    profiles.className = 'profile-links';
-    profiles.setAttribute('aria-label', 'Professional profiles');
-    for (const [label, url] of [
-      ['LinkedIn', 'https://www.linkedin.com/in/justinattw'],
-      ['GitHub', 'https://github.com/justinattw'],
-    ]) {
-      const link = document.createElement('a');
-      link.textContent = label;
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.insertAdjacentHTML('beforeend', icon('arrow'));
-      profiles.append(link);
-    }
-    content.append(profiles);
   }
   card.scrollTop = 0;
 }

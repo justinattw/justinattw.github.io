@@ -1,310 +1,765 @@
-import { test, expect } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
-const readingData = JSON.parse(await readFile(new URL('../src/reading.json', import.meta.url), 'utf8'));
-const readingBooks = [
-  ...(readingData.currentlyReading.synced ? readingData.currentlyReading.books : []),
-  ...(readingData.recentlyRead.synced ? readingData.recentlyRead.books.slice(0, 5) : []),
-];
+import { expect, test } from '@playwright/test';
+import geography from '../src/london-os/geography.json' with { type: 'json' };
+import * as THREE from 'three';
+import { buildGardens } from '../src/gardens-model.js';
+import { readdirSync, readFileSync } from 'node:fs';
 
-test('cat walks around the room and respects reduced motion', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/');
-  await expect(page.locator('#room-targets')).toBeVisible();
-  const room = page.locator('#room');
-  await expect(room).toHaveAttribute('data-globe-position', '1.7,1.8,-2.4');
-  const globeRotation = await room.getAttribute('data-globe-rotation');
-  const resting = await room.getAttribute('data-cat-position');
-  await page.waitForTimeout(300);
-  await expect(room).toHaveAttribute('data-cat-position', resting);
-  await expect(room).toHaveAttribute('data-globe-rotation', globeRotation);
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await expect.poll(() => room.getAttribute('data-cat-position'), { timeout: 15000 }).not.toBe(resting);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.waitForTimeout(100);
-  const stopped = await room.getAttribute('data-cat-position');
-  await page.waitForTimeout(300);
-  await expect(room).toHaveAttribute('data-cat-position', stopped);
+test('homepage is the only published HTML entrypoint and retains semantic portfolio content', () => {
+  const dist = new URL('../dist/', import.meta.url);
+  expect(readdirSync(dist).filter(file => file.endsWith('.html'))).toEqual(['index.html']);
+  const html = readFileSync(new URL('index.html', dist), 'utf8');
+  expect(html).toContain('id="london-view"');
+  for (const id of ['cv', 'projects', 'reading', 'work', 'hobbies']) expect(html).toContain(`id="${id}"`);
+  expect(html).toContain('Momentum backtest');
+  expect(html).not.toMatch(/(?:gardens|styles|london-os)\.html/);
 });
 
-test('wall clock follows UK time, ticks and observes British Summer Time', async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ baseURL, timezoneId: 'America/Los_Angeles', reducedMotion: 'reduce' });
-  try {
-    const page = await context.newPage();
-    await page.clock.install({ time: new Date('2026-11-10T12:45:00Z') });
-    await page.clock.pauseAt(new Date('2026-11-10T12:45:59Z'));
-    await page.goto('/');
-    await expect(page.locator('#room-targets')).toBeVisible();
-    await expect(page.locator('#room')).toHaveAttribute('data-clock-time', '12:45');
-    await page.clock.runFor(1000);
-    await expect(page.locator('#room')).toHaveAttribute('data-clock-time', '12:46');
-    await page.clock.setSystemTime(new Date('2026-07-10T12:45:59Z'));
-    await page.clock.runFor(1000);
-    await expect(page.locator('#room')).toHaveAttribute('data-clock-time', '13:46');
-  } finally {
-    await context.close();
-  }
-});
-
-async function enter(page, id) {
-  await page.locator(`.explore-nav a[href="#${id}"]`).click();
-  await expect(page.locator('#room')).toHaveAttribute('data-view', id);
-  await expect(page.locator('#room')).toHaveAttribute('data-moving', 'false');
-  await expect(page.locator('#scene-back')).toBeVisible();
+async function settled(page, view) {
+  const canvas = page.locator('#london-view');
+  await expect(canvas).toHaveAttribute('data-view', view);
+  await expect(canvas).toHaveAttribute('data-transition', 'false');
 }
 
-test('room destinations move the camera without opening popups', async ({ page }) => {
-  const errors = [];
+async function observeScene(page) {
+  await page.addInitScript(() => {
+    window.__THREE_DEVTOOLS__ = new EventTarget();
+    window.__THREE_DEVTOOLS__.addEventListener('observe', ({ detail: renderer }) => {
+      if (!renderer.isWebGLRenderer) return;
+      const render = renderer.render;
+      renderer.render = function(scene, camera) {
+        window.londonScene = scene;
+        window.londonCamera = camera;
+        return render.call(this, scene, camera);
+      };
+    });
+  });
+}
+
+test('expanded OS geography retains valid georeferencing, parks, tidal water and triangles', () => {
+  for (const name of ['Hyde Park', 'Kensington Gardens', "Regent's Park", "St James's Park", 'Battersea Park', 'Hampstead Heath']) {
+    expect(geography.features.some(feature => feature.kind === 'park' && feature.name === name)).toBe(true);
+  }
+  const [left, bottom, right, top] = geography.bounds;
+  expect((right - left) * (top - bottom)).toBeGreaterThan(4 * 12000 * 8500);
+  let invalidVertices = 0, invalidTriangles = 0;
+  for (const feature of geography.features) {
+    for (const [e, n] of feature.vertices) if (e < left || e > right || n < bottom || n > top) invalidVertices++;
+    for (let i = 0; i < feature.triangles.length; i += 3) {
+      const [a, b, c] = feature.triangles.slice(i, i + 3).map(index => feature.vertices[index]);
+      if (!a || !b || !c || (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) <= 0) invalidTriangles++;
+    }
+  }
+  expect(invalidVertices).toBe(0);
+  expect(invalidTriangles).toBe(0);
+  for (const source of geography.sources) expect(source.downloadedMd5).toBe(source.metadataMd5);
+  expect(geography.features.filter(feature => feature.kind === 'water').length).toBeGreaterThan(23);
+  for (const name of ['The Serpentine', 'The Long Water', 'Round Pond']) {
+    const lake = geography.features.find(feature => feature.name === name);
+    expect(lake.sourceLayer).toBe('SurfaceWater_Area');
+    expect(lake.sourceId).not.toBe('');
+    const area = lake.triangles.reduce((sum, index, i, indices) => {
+      if (i % 3) return sum;
+      const [a, b, c] = indices.slice(i, i + 3).map(index => lake.vertices[index]);
+      return sum + ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2;
+    }, 0);
+    expect(area).toBeGreaterThan(name === 'The Serpentine' ? 100000 : 10000);
+  }
+});
+
+test('Cornwall Gardens has white façades, two buildings per side and no garden furniture', () => {
+  const normal = new THREE.Group(), compact = new THREE.Group();
+  buildGardens(normal, { uniformRoofline: true, furnish: false });
+  buildGardens(compact, { uniformRoofline: true, furnish: false, cornwallGardens: true });
+  function instances(root) {
+    return root.children.flatMap(mesh => Array.from({ length: mesh.count }, (_, index) => {
+      const matrix = new THREE.Matrix4();
+      mesh.getMatrixAt(index, matrix);
+      return {
+        color: mesh.material.color.getHexString(),
+        position: new THREE.Vector3().setFromMatrixPosition(matrix),
+        size: new THREE.Vector3().setFromMatrixScale(matrix),
+      };
+    }));
+  }
+  const before = instances(normal), after = instances(compact);
+  const close = (a, b) => Math.abs(a - b) < .001;
+  const sideBuildings = parts => parts.filter(part => close(part.size.x, 4.35) && close(part.size.z, 4.45) && part.size.y > 10);
+  expect(sideBuildings(before)).toHaveLength(6);
+  expect(sideBuildings(after)).toHaveLength(4);
+  for (const side of [-1, 1]) {
+    const buildings = sideBuildings(after).filter(part => part.position.x * side > 0);
+    expect(buildings).toHaveLength(2);
+    expect(buildings.every(part => part.color === 'f5f5f0')).toBe(true);
+    expect(buildings[0].position.z).toBeCloseTo(1.1);
+    expect(buildings[1].position.z).toBeCloseTo(5.54);
+  }
+  const gardenBefore = before.find(part => part.color === '57734b');
+  const gardenAfter = after.find(part => part.color === '57734b');
+  expect(gardenAfter.size.z).toBeCloseTo(gardenBefore.size.z - 4.44);
+  expect(gardenAfter.position.z - gardenAfter.size.z / 2).toBeCloseTo(gardenBefore.position.z - gardenBefore.size.z / 2);
+  const seats = parts => parts.filter(part => part.color === '865538' && close(part.size.x, 1.4) && close(part.size.z, .42));
+  expect(seats(before)).toHaveLength(4);
+  expect(seats(after)).toHaveLength(0);
+  expect(before.some(part => part.color === '6e8885')).toBe(true);
+  expect(after.some(part => ['6e8885', 'aaa38f', 'e2d9c4', 'cabcaa', 'f6edda'].includes(part.color))).toBe(false);
+});
+
+test('landmarks retain openings and have visible detailed palace rear elevations', async ({ page }) => {
+  await observeScene(page);
+  await page.goto('/');
+  await settled(page, 'city');
+  const details = await page.evaluate(async () => {
+    const url = document.querySelector('link[rel="modulepreload"][href*="/three-"]').href;
+    const module = await import(url);
+    const Raycaster = Object.values(module).find(value => value?.prototype?.intersectObject);
+    const ray = new Raycaster();
+    function probe(name, point, direction) {
+      const root = window.londonScene.getObjectByName(name);
+      ray.set(root.localToWorld(root.position.clone().set(...point)), root.position.clone().set(...direction).transformDirection(root.matrixWorld));
+      return ray.intersectObject(root, true)[0]?.object.name ?? null;
+    }
+    const column = window.londonScene.getObjectByName("Nelson's Column");
+    const shaft = column.getObjectByName('Nelson column shaft');
+    const hall = window.londonScene.getObjectByName('Royal Albert Hall');
+    shaft.geometry.computeBoundingBox();
+    return {
+      hall: {
+        scale: hall.scale.toArray(),
+        arcadeBays: hall.children.filter(child => child.name === 'Albert Hall arcade bay').length,
+        domeRibs: hall.getObjectByName('Albert Hall dome ribs').geometry.attributes.position.count,
+      },
+      kensington: [-1.55, 1.55].map(x => probe('Kensington Palace', [x, 3, 1.3], [0, -1, 0])),
+      mainBlock: probe('Kensington Palace', [0, 3, 0], [0, -1, 0]) !== null,
+      courtyard: probe('Buckingham Palace', [0, 4, 0], [0, -1, 0]),
+      arches: [-.95, 0, .95, .56].map(x => probe('Marble Arch', [x, .56, 2], [0, 0, -1]) !== null),
+      columnPosition: column.position.toArray(),
+      archPosition: window.londonScene.getObjectByName('Marble Arch').position.toArray(),
+      shaftHeight: shaft.geometry.boundingBox.max.y - shaft.geometry.boundingBox.min.y,
+      rearWindows: [
+        probe('Buckingham Palace', [.375, 1.18, -4], [0, 0, 1]),
+        probe('Kensington Palace', [.44, 1.2, -3], [0, 0, 1]),
+      ],
+      palaceFacings: [
+        ['Kensington Palace', 'Kensington east entrance', 252.5],
+        ['Buckingham Palace', 'Buckingham balcony', 235.3],
+      ].map(([name, featureName, bearing]) => {
+        const palace = window.londonScene.getObjectByName(name);
+        const feature = palace.getObjectByName(featureName);
+        const front = feature.getWorldPosition(palace.position.clone()).sub(palace.position).setY(0).normalize();
+        const angle = bearing * Math.PI / 180;
+        const direction = palace.position.clone().set(Math.sin(angle), 0, -Math.cos(angle));
+        return front.dot(direction);
+      }),
+    };
+  });
+  expect(details.kensington).toEqual([null, null]);
+  expect(details.mainBlock).toBe(true);
+  expect(details.courtyard).toBe('Buckingham courtyard');
+  expect(details.arches).toEqual([false, false, false, true]);
+  expect(details.columnPosition[0]).toBeCloseTo(20.17);
+  expect(details.columnPosition[2]).toBeCloseTo(-11.69);
+  expect(details.archPosition[0]).toBeCloseTo(-1.48);
+  expect(details.archPosition[2]).toBeCloseTo(-17.18);
+  expect(details.shaftHeight).toBeGreaterThan(2);
+  expect(details.rearWindows).toEqual(['Sash glazing', 'Sash glazing']);
+  expect(details.hall.scale).toEqual([.95, .95, .95]);
+  expect(details.hall.arcadeBays).toBe(20);
+  expect(details.hall.domeRibs).toBe(480);
+  for (const alignment of details.palaceFacings) expect(alignment).toBeGreaterThan(.9999);
+});
+
+test('new neighbouring houses, eastern skyline and right-wall cabinet are placed in the scene', async ({ page }) => {
+  await observeScene(page);
+  await page.goto('/#office');
+  await settled(page, 'office');
+  const details = await page.evaluate(() => {
+    const scene = window.londonScene;
+    const vector = (...values) => scene.position.clone().set(...values);
+    const houses = scene.getObjectByName('Neighbouring houses');
+    const cabinet = scene.getObjectByName('Interests cabinet');
+    const board = scene.getObjectByName('Work history pinboard');
+    const heights = ['The Shard', 'The Gherkin', 'Walkie Talkie', 'One Canada Square'].map(name => {
+      const root = scene.getObjectByName(name);
+      let top = 0, finite = true;
+      root.traverse(object => {
+        if (!object.geometry) return;
+        object.geometry.computeBoundingBox();
+        const bounds = object.geometry.boundingBox;
+        top = Math.max(top, root.worldToLocal(object.localToWorld(bounds.max.clone())).y);
+        finite &&= Array.from(object.geometry.attributes.position.array).every(Number.isFinite);
+      });
+      return { top, finite };
+    });
+    return {
+      houses: houses.children.map(house => house.position.toArray()),
+      houseParts: houses.children.map(house => house.children.map(part => ({
+        geometry: part.geometry.type, color: part.material.color.getHexString(),
+      }))),
+      cityColors: (() => {
+        const buildings = scene.children.find(object => object.isInstancedMesh && object.instanceColor);
+        return Array.from({ length: 7 }, (_, index) => {
+          const color = buildings.material.color.clone();
+          buildings.getColorAt(index, color);
+          return color.getHexString();
+        });
+      })(),
+      roofColor: scene.children.find(object => object.isInstancedMesh && object.material.color.getHexString() === '788086').material.color.getHexString(),
+      cabinetPosition: cabinet.position.toArray(),
+      cabinetFacing: vector(0, 0, 1).transformDirection(cabinet.matrixWorld).toArray(),
+      boardScale: board.scale.toArray(),
+      skyline: ['The Shard', 'Walkie Talkie', 'The Gherkin', 'Canary Wharf'].map(name => scene.getObjectByName(name).position.toArray()),
+      wharfTowers: scene.getObjectByName('Canary Wharf').children.length,
+      heights,
+      lattice: scene.getObjectByName('Gherkin diagrid').geometry.attributes.position.count,
+    };
+  });
+  expect(details.houses).toHaveLength(9);
+  for (const [x, , z] of details.houses) expect(Math.abs(x) > 6.5 || Math.abs(z) > 5.5).toBe(true);
+  expect(details.houses.filter(([, , z]) => z < -5.5)).toHaveLength(3);
+  for (const parts of details.houseParts) {
+    expect(parts).toHaveLength(2);
+    expect(parts.every(part => part.geometry === 'BoxGeometry')).toBe(true);
+    expect(details.cityColors).toContain(parts[0].color);
+    expect(parts[1].color).toBe(details.roofColor);
+  }
+  expect(details.cabinetPosition[0]).toBeGreaterThan(3);
+  expect(details.cabinetPosition[2]).toBeLessThan(-7);
+  expect(details.cabinetFacing[0]).toBeCloseTo(-1);
+  expect(details.cabinetFacing[2]).toBeCloseTo(0);
+  expect(details.boardScale).toEqual([.72, .72, .72]);
+  const approximateLocations = [[49.5, 0, -9], [51, 0, -16.5], [53.5, 0, -20], [95.5, 0, -10.5]];
+  details.skyline.forEach((point, index) => point.forEach((value, axis) => expect(value).toBeCloseTo(approximateLocations[index][axis])));
+  expect(details.wharfTowers).toBe(9);
+  expect(details.heights.every(({ finite }) => finite)).toBe(true);
+  expect(details.heights[0].top).toBeGreaterThan(details.heights[3].top);
+  expect(details.heights[3].top).toBeGreaterThan(details.heights[1].top);
+  expect(details.heights[1].top).toBeGreaterThan(5);
+  expect(details.heights[2].top).toBeGreaterThan(5);
+  expect(details.lattice).toBeGreaterThan(1000);
+});
+
+test('the entire garden square is five percent larger than the previous sixty-percent scale', async ({ page }) => {
+  const normal = new THREE.Group();
+  buildGardens(normal, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true, cornwallGardens: true });
+  function dimensions(root, color) {
+    const mesh = root.children.find(child => child.material.color.getHexString() === color);
+    const matrix = new THREE.Matrix4();
+    mesh.getMatrixAt(0, matrix);
+    return new THREE.Vector3().setFromMatrixScale(matrix).multiplyScalar(.43).toArray();
+  }
+  const original = ['57734b', '314c3b', 'f5f5f0'].map(color => dimensions(normal, color));
+  await observeScene(page);
+  await page.goto('/');
+  await settled(page, 'city');
+  const compact = await page.evaluate(() => {
+    const root = window.londonScene.getObjectByName('London garden square');
+    return ['57734b', '314c3b', 'f5f5f0'].map(color => {
+      const mesh = root.children.find(child => child.material?.color.getHexString() === color);
+      const matrix = mesh.matrixWorld.clone();
+      const instance = matrix.clone();
+      mesh.getMatrixAt(0, instance);
+      matrix.multiply(instance);
+      return root.scale.clone().setFromMatrixScale(matrix).toArray();
+    });
+  });
+  for (let part = 0; part < original.length; part++) {
+    for (let axis = 0; axis < 3; axis++) expect(compact[part][axis] / original[part][axis]).toBeCloseTo(.6 * 1.05);
+  }
+});
+
+test('study has open rectangular windows, side wallpaper and no roof fragment', () => {
+  const root = new THREE.Group();
+  const { floor } = buildGardens(root, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true, cornwallGardens: true });
+  root.updateMatrixWorld(true);
+  const hits = new THREE.Raycaster(new THREE.Vector3(-.6, floor + 1.95, -11), new THREE.Vector3(0, 0, -1), 0, 3).intersectObject(root, true);
+  expect(hits.length).toBeGreaterThan(0);
+  expect(hits.every(hit => hit.object.name === 'Study window glazing' && hit.object.material.transparent && hit.object.material.opacity < .2)).toBe(true);
+  const walls = [];
+  let roofFragment = false;
+  root.traverse(mesh => {
+    if (!mesh.isInstancedMesh) return;
+    for (let index = 0; index < mesh.count; index++) {
+      const matrix = new THREE.Matrix4();
+      mesh.getMatrixAt(index, matrix);
+      const size = new THREE.Vector3().setFromMatrixScale(matrix);
+      const position = new THREE.Vector3().setFromMatrixPosition(matrix);
+      const close = (a, b) => Math.abs(a - b) < .001;
+      if (close(size.x, 3.04) && close(size.y, .57) && close(size.z, 2.06)) roofFragment = true;
+      if (mesh.material.color.getHexString() === '314c3b' && close(size.x, .3) && close(size.y, 2.7)) walls.push({ position, size });
+    }
+  });
+  expect(roofFragment).toBe(false);
+  expect(walls).toHaveLength(2);
+  walls.map(wall => wall.position.x).sort((a, b) => a - b).forEach((value, index) => expect(value).toBeCloseTo(index ? 3.57 : -3.57));
+  expect(walls.every(wall => wall.size.z > 5.7)).toBe(true);
+});
+
+test('living study has plants, a roaming black cat and a compact rug, hidden during close-ups', async ({ page }, testInfo) => {
+  await observeScene(page);
+  await page.goto('/#office');
+  await settled(page, 'office');
+  const canvas = page.locator('#london-view');
+  const details = await page.evaluate(() => {
+    const scene = window.londonScene;
+    const plants = scene.getObjectByName('Study plants');
+    const paws = [];
+    scene.getObjectByName('Black study cat').traverse(object => {
+      if (object.name === 'paw') paws.push(object.children[0].material.color.getHexString());
+    });
+    const roof = scene.getObjectByName('Design Museum saddle roof').geometry;
+    roof.computeBoundingBox();
+    return {
+      plants: plants.children.map(plant => plant.name),
+      visible: plants.visible,
+      paws,
+      rug: scene.getObjectByName('Study rug').scale.toArray(),
+      museum: scene.getObjectByName('Design Museum').position.toArray(),
+      museumScale: scene.getObjectByName('Design Museum').scale.x,
+      roof: [roof.boundingBox.min.y, roof.boundingBox.max.y],
+      finite: Array.from(roof.attributes.position.array).every(Number.isFinite),
+    };
+  });
+  expect(details.plants).toEqual(['Monstera', 'Bamboo']);
+  expect(details.visible).toBe(true);
+  expect(details.paws).toEqual(['202325', '202325', '202325', '202325']);
+  expect(details.rug[0]).toBeLessThan(4.5);
+  expect(details.rug[2]).toBeLessThan(3);
+  expect(details.museum[0]).toBeCloseTo(-33);
+  expect(details.museum[2]).toBeCloseTo(-3);
+  expect(details.museumScale).toBe(.45);
+  expect(details.finite).toBe(true);
+  expect(details.roof[1] - details.roof[0]).toBeGreaterThan(1.3);
+  const initialPosition = await canvas.getAttribute('data-cat-position');
+  await expect(canvas).toHaveAttribute('data-cat-action', 'walk', { timeout: 10000 });
+  await expect(canvas).not.toHaveAttribute('data-cat-position', initialPosition);
+  await page.screenshot({ path: testInfo.outputPath('london-living-study.png') });
+  await page.locator('[data-destination="cv"]').click();
+  await settled(page, 'cv');
+  expect(await page.evaluate(() => ['Study plants', 'Study cat routine'].map(name => window.londonScene.getObjectByName(name).visible))).toEqual([false, false]);
+  const frozen = await canvas.getAttribute('data-cat-position');
+  await page.waitForTimeout(150);
+  await expect(canvas).toHaveAttribute('data-cat-position', frozen);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#office');
+  await settled(page, 'office');
+  const still = await canvas.getAttribute('data-cat-position');
+  await page.waitForTimeout(150);
+  await expect(canvas).toHaveAttribute('data-cat-position', still);
+});
+
+test('continuous world supports mouse/touch orbit, office exploration and all portfolio objects offline', async ({ page, isMobile, baseURL }, testInfo) => {
+  test.setTimeout(60000);
+  const errors = [], external = [];
+  await observeScene(page);
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/');
-  await expect(page.locator('#room-targets')).toBeVisible();
-  await expect(page.locator('.masthead')).not.toContainText('JUSTIN WONG');
-  await expect(page.locator('.masthead .monogram')).toHaveText('jw.');
-  await expect(page.locator('.masthead .github-link')).toHaveText('GitHub ↗');
-  for (const id of ['work', 'cv', 'projects', ...(readingBooks.length ? ['reading'] : []), 'hobbies']) {
-    const target = page.locator(`[data-anchor="${id}"]`);
-    await target.click();
-    await expect(page.locator('#room')).toHaveAttribute('data-moving', 'true');
-    await expect(page.locator('#room')).toHaveAttribute('data-view', id);
-    await expect(page.locator('#room')).toHaveAttribute('data-moving', 'false');
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await expect(target).toBeVisible();
-    await expect(target).toBeFocused();
-  }
-  await expect(page.locator('dialog')).toHaveCount(0);
-  expect(errors).toEqual([]);
-  expect(await page.locator('#room').evaluate(canvas => canvas.width >= canvas.clientWidth)).toBe(true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-});
-
-test('hobbies cupboard opens and closes with accessible contents', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/#hobbies');
-  await expect(page.locator('.explore-nav a[href="#hobbies"]')).toHaveText('Interests');
-  await expect(page.locator('#hobbies-title')).toHaveText('Interests');
-  await expect(page.locator('#room')).toHaveAttribute('data-cupboard-open', 'true');
-  for (const hobby of ['Crosswords', 'Skiing', 'Football', 'Gym', 'Languages', 'Running', 'Scuba diving']) {
-    await expect(page.locator('#scene-reader')).toContainText(hobby);
-  }
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await expect(page.locator('#room')).toHaveAttribute('data-cupboard-open', 'false');
-  await page.getByRole('button', { name: 'Simple view' }).click();
-  await expect(page.locator('#hobbies')).not.toBeVisible();
-  await expect(page.locator('.explore-nav a[href="#hobbies"]')).not.toBeVisible();
-});
-
-test('reading and projects have separate shelf focuses and Goodreads book links', async ({ page }) => {
-  test.skip(!readingBooks.length, 'No synced books are available');
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/#reading');
-  await expect(page.locator('#room')).toHaveAttribute('data-view', 'reading');
-  await expect(page.locator('[data-kind="reading"]')).toHaveCount(readingBooks.length);
-  await expect(page.locator('[data-kind="book"]')).toHaveCount(0);
-  for (const [index, { title }] of readingBooks.entries()) {
-    await page.getByRole('button', { name: `Open ${title}`, exact: true }).click();
-    await expect(page.locator('#room')).toHaveAttribute('data-item', `reading-${index}`);
-    await expect(page.locator('#scene-reader')).toContainText(title);
-    await expect(page.getByRole('link', { name: 'View on Goodreads' })).toHaveAttribute('href', /^https:\/\/www.goodreads.com\/book\/show\//);
-    await expect(page).toHaveURL(new RegExp(`#reading/reading-${index}$`));
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-  }
-  await page.goto('/#reading/reading-0');
-  await expect(page.locator('#room')).toHaveAttribute('data-item', 'reading-0');
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await enter(page, 'projects');
-  await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
-  await expect(page.locator('[data-kind="reading"]')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'Simple view' }).click();
-  await expect(page.locator('#reading')).not.toBeVisible();
-  await expect(page.locator('.explore-nav a[href="#reading"]')).not.toBeVisible();
-  await page.getByRole('button', { name: 'Room view' }).click();
-  await expect(page.locator('[data-anchor="reading"]')).toBeVisible();
-  await expect(page.locator('[data-anchor="hobbies"]')).toBeVisible();
-});
-
-test('each 3D lanyard card flips to its complete job details', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/');
-  await expect(page.locator('#room-targets')).toBeVisible();
-  await enter(page, 'work');
-  await expect(page.locator('[data-kind="job"]')).toHaveCount(5);
-  const companies = ['GitHub', 'TradingHub', 'CoreStream', 'UCL Computer Science', 'Nuveen'];
-  for (let index = 0; index < companies.length; index++) {
-    const target = page.locator(`[data-kind="job"][data-index="${index}"]`);
-    await target.click();
-    await expect(page.locator('#room')).toHaveAttribute('data-item', `job-${index}`);
-    await expect(page.locator('#room')).toHaveAttribute('data-face', 'back');
-    await expect(page.locator('#scene-reader')).toContainText(companies[index]);
-    if (index === 0) {
-      await expect(page.locator('#scene-reader')).toContainText('50 Kafka-backed jobs');
-      await expect(page.locator('#scene-reader')).toContainText('GitHub Universe 2025');
+  await page.route('**/*', route => {
+    if (new URL(route.request().url()).origin !== new URL(baseURL).origin) {
+      external.push(route.request().url()); return route.abort();
     }
-    await target.click();
-    await expect(page.locator('#room')).toHaveAttribute('data-face', 'front');
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await expect(page.locator('[data-kind="job"]')).toHaveCount(5);
-  }
-  await expect(page.locator('dialog')).toHaveCount(0);
-});
-
-test('titled books open as physical project pages, not panels', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+    return route.continue();
+  });
   await page.goto('/');
-  await expect(page.locator('#room-targets')).toBeVisible();
-  await enter(page, 'projects');
-  await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
-  for (const [index, title] of ['Momentum backtest', 'Mini container runtime', 'JRectangle'].entries()) {
-    await page.getByRole('button', { name: `Open ${title}`, exact: true }).click();
-    await expect(page.locator('#room')).toHaveAttribute('data-item', `book-${index}`);
-    await expect(page.locator('#scene-reader')).toContainText(title);
-    await expect(page.locator('#scene-reader')).toContainText(['momentum investing', 'how containers work', 'macOS window manager'][index]);
-    await expect(page.getByRole('button', { name: 'Close book', exact: true })).toBeVisible();
-    await expect(page.locator('#project-position')).toHaveText(/^1 \/ \d+$/);
-    if (index === 2) {
-      const link = page.getByRole('link', { name: 'View on GitHub ↗', exact: true });
-      await expect(link).toBeVisible();
-      await expect(link).toHaveAttribute('href', 'https://github.com/justinattw/Rectangle');
-      await expect(link).toHaveAttribute('target', '_blank');
-      await page.context().route('https://github.com/justinattw/Rectangle', route => route.fulfill({ body: 'Repository' }));
-      const popupPromise = page.waitForEvent('popup');
-      await link.click();
-      const popup = await popupPromise;
-      await expect(popup).toHaveURL('https://github.com/justinattw/Rectangle');
-      await popup.close();
-    }
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
+  const canvas = page.locator('#london-view');
+  const explore = page.getByRole('button', { name: 'Explore', exact: true });
+  await expect(explore).toBeVisible();
+  await settled(page, 'city');
+  const frame = await canvas.boundingBox();
+  const center = (await canvas.getAttribute('data-room-center')).split(',').map(Number);
+  expect(center[0]).toBeCloseTo(frame.width / 2, 1);
+  expect(center[1]).toBeCloseTo(frame.height / 2, 1);
+  const masthead = await page.locator('.masthead').boundingBox();
+  expect(masthead.x).toBe(0);
+  expect(masthead.width).toBe(frame.width);
+  const profiles = page.locator('footer').getByRole('navigation', { name: 'Professional profiles' });
+  await expect(profiles.getByRole('link', { name: 'LinkedIn' })).toHaveAttribute('href', 'https://www.linkedin.com/in/justinattw');
+  await expect(profiles.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://github.com/justinattw');
+  for (const link of await profiles.getByRole('link').all()) {
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(link.locator('svg')).toBeVisible();
   }
-  await expect(page.locator('#projects')).not.toBeVisible();
-});
-
-test('computer pages through the CV on its own screen', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/');
-  await expect(page.locator('#room-targets')).toBeVisible();
-  await enter(page, 'cv');
-  await expect(page.getByRole('textbox', { name: 'Terminal command' })).toBeVisible();
-  await page.getByRole('textbox', { name: 'Terminal command' }).fill('cv');
-  await page.getByRole('textbox', { name: 'Terminal command' }).press('Enter');
-  await expect(page.locator('#scene-reader')).toContainText('JUSTIN WONG');
-  await page.getByRole('button', { name: 'Next CV page' }).click();
-  await expect(page.locator('#scene-reader')).toContainText('GitHub');
-  await page.getByRole('button', { name: 'Previous CV page' }).click();
-  await expect(page.locator('#cv-position')).toHaveText(/^1 \/ \d+$/);
-  await expect(page.getByRole('button', { name: 'Previous CV page' })).toHaveAttribute('aria-keyshortcuts', 'ArrowLeft');
-  await expect(page.getByRole('button', { name: 'Next CV page' })).toHaveAttribute('aria-keyshortcuts', 'ArrowRight');
-  await page.keyboard.press('ArrowRight');
-  await expect(page.locator('#cv-position')).toHaveText(/^2 \/ \d+$/);
-  await expect(page.locator('#scene-reader')).toContainText('GitHub');
-  await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('#cv-position')).toHaveText(/^1 \/ \d+$/);
-  await expect(page.locator('.access-card:visible')).toHaveCount(0);
-  const link = page.getByRole('link', { name: 'Download CV', exact: true });
-  const downloadEvent = page.waitForEvent('download');
-  await link.click();
-  const download = await downloadEvent;
-  expect(download.suggestedFilename()).toBe('Justin-Wong-Resume.pdf');
-  expect(await readFile(await download.path())).toEqual(await readFile('public/justin-wong-resume.pdf'));
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('button', { name: 'Simple view' }).click();
-  await expect(page.locator('#cv .download-button')).toHaveAttribute('href', '/justin-wong-resume.pdf');
-  await expect(page.locator('#cv .download-button')).toHaveAttribute('download', 'Justin-Wong-Resume.pdf');
-});
-
-test('cards flip and books unfold with real object animation', async ({ page }) => {
-  await page.goto('/#work');
-  await expect(page.locator('#scene-back')).toBeVisible();
-  await page.getByRole('button', { name: 'Flip GitHub', exact: true }).click();
-  await expect(page.locator('#room')).toHaveAttribute('data-moving', 'true');
-  await expect(page.locator('#room')).toHaveAttribute('data-moving', 'false');
-  await expect(page.locator('#room')).toHaveAttribute('data-face', 'back');
-  await page.goto('/#projects');
-  await expect(page.locator('#scene-back')).toBeVisible();
-  await page.getByRole('button', { name: 'Open Momentum backtest', exact: true }).click();
-  await expect(page.locator('#room')).toHaveAttribute('data-moving', 'true');
-  await expect(page.locator('#room')).toHaveAttribute('data-moving', 'false');
-  await expect(page.locator('#room')).toHaveAttribute('data-item', 'book-0');
-});
-
-test('objects respond to actual mouse and touch raycasts', async ({ page, isMobile }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/');
-  await expect(page.locator('#room-targets')).toBeVisible();
-  for (const id of ['cv', 'work', 'projects', 'hobbies']) {
-    const target = await page.locator(`[data-anchor="${id}"]`).boundingBox();
-    await page.locator('#room-targets').evaluate(element => { element.style.display = 'none'; });
-    const x = target.x + target.width / 2, y = target.y + target.height / 2;
-    if (isMobile) await page.touchscreen.tap(x, y);
-    else await page.mouse.click(x, y);
-    await expect(page.locator('#room')).toHaveAttribute('data-view', id);
-    await expect(page.locator('#scene-back')).toBeVisible();
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await page.locator('#room-targets').evaluate(element => { element.style.display = ''; });
-    await expect(page.locator('[data-anchor="cv"]')).toBeVisible();
+  await expect(page.locator('footer')).not.toContainText('Scroll or pinch to zoom');
+  const footerGroups = await page.locator('footer > *').evaluateAll(elements => elements.map(element => {
+    const { left, right, top, bottom } = element.getBoundingClientRect();
+    return { left, right, top, bottom };
+  }));
+  for (let i = 0; i < footerGroups.length; i++) {
+    expect(footerGroups[i].left).toBeGreaterThanOrEqual(0);
+    expect(footerGroups[i].right).toBeLessThanOrEqual(frame.width);
+    if (i) expect(footerGroups[i].left).toBeGreaterThanOrEqual(footerGroups[i - 1].right);
   }
-});
-
-test('keyboard, nested deep links, browser history and simple view', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/#work/job-0');
-  await expect(page.locator('#room')).toHaveAttribute('data-item', 'job-0');
-  await page.keyboard.press('Escape');
-  await expect(page.locator('[data-kind="job"]')).toHaveCount(5);
-  await page.keyboard.press('Escape');
-  await expect(page.locator('[data-anchor="projects"]')).toBeVisible();
-  await page.locator('.explore-nav a[href="#projects"]').focus();
+  await expect(page.locator('.masthead')).not.toContainText('South Kensington, London');
+  await expect(page.locator('.intro')).not.toContainText('Come up to the study');
+  const titleCard = await page.locator('.intro').boundingBox();
+  expect(titleCard.width).toBeGreaterThan(isMobile ? 220 : 280);
+  expect(titleCard.x + titleCard.width).toBeLessThanOrEqual(frame.width);
+  expect(await page.locator('#world-title').evaluate(title => parseFloat(getComputedStyle(title).fontSize))).toBeLessThanOrEqual(42);
+  expect(await page.evaluate(() => {
+    const passes = [], straps = [];
+    window.londonScene.traverse(object => {
+      if (object.name.startsWith('work-history-pass-')) passes.push(object.visible && object.children.some(child => child.material?.map));
+      if (object.name.startsWith('lanyard-')) straps.push(object.children.length);
+    });
+    return { passes, straps, landmarks: ['Kensington Palace', 'Albert Bridge', 'Buckingham Palace', 'London Eye', "Nelson's Column", 'Marble Arch'].every(name => !!window.londonScene.getObjectByName(name)) };
+  })).toEqual({ passes: [true, true, true, true, true], straps: [4, 4, 4, 4, 4], landmarks: true });
+  const bearings = await page.evaluate(() => [['Kensington Palace', 'z'], ['Albert Bridge', 'z'], ['Buckingham Palace', 'z'], ['Eye rim', 'x'], ['Marble Arch', 'z']].map(([name, axis]) => {
+    const landmark = window.londonScene.getObjectByName(name);
+    const direction = landmark.position.clone().set(axis === 'x' ? 1 : 0, 0, axis === 'z' ? 1 : 0).transformDirection(landmark.matrixWorld);
+    return (Math.atan2(direction.x, -direction.z) * 180 / Math.PI + 360) % 360;
+  }));
+  expect(bearings[0]).toBeCloseTo(252.5, 0);
+  expect(bearings[1]).toBeCloseTo(161.3, 0);
+  expect(bearings[2]).toBeCloseTo(235.3, 0);
+  expect(bearings[3]).toBeCloseTo(5.8, 0);
+  expect(bearings[4]).toBeCloseTo(166.3, 0);
+  if (isMobile) {
+    const intro = await page.locator('.intro').boundingBox();
+    expect((await explore.boundingBox()).y).toBeGreaterThan(intro.y + intro.height);
+  }
+  const original = await canvas.getAttribute('data-orbit');
+  const { x, y, width, height } = await canvas.boundingBox();
+  const start = { x: x + width * .7, y: y + height * .7 };
+  if (isMobile) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x - 70, y: start.y }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+  } else {
+    await page.mouse.move(start.x, start.y); await page.mouse.down();
+    await page.mouse.move(start.x + 120, start.y, { steps: 5 }); await page.mouse.up();
+  }
+  await expect(canvas).not.toHaveAttribute('data-orbit', original);
+  const rotated = await canvas.getAttribute('data-orbit');
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
-  await page.goBack();
-  await expect(page.locator('[data-anchor="cv"]')).toBeVisible();
-  await page.goForward();
-  await expect(page.locator('[data-kind="book"]')).toHaveCount(3);
+  await expect(canvas).not.toHaveAttribute('data-orbit', rotated);
+  await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  await expect(canvas).toHaveAttribute('data-orbit', rotated);
+  await page.getByRole('button', { name: 'Rotate left', exact: true }).click();
+  await expect(canvas).not.toHaveAttribute('data-orbit', rotated);
+  await page.getByRole('button', { name: 'Return to London', exact: true }).click();
+  await settled(page, 'city');
+  await expect(canvas).toHaveAttribute('data-orbit', original);
+  await page.screenshot({ path: testInfo.outputPath(`london-world-${testInfo.project.name}.png`) });
+  await explore.click();
+  await settled(page, 'office');
+  await expect(page.locator('#office-targets button').first()).toBeFocused();
+  await expect(explore).toBeHidden();
+  await expect(page.locator('#office-targets button')).toHaveCount(5);
+  await page.screenshot({ path: testInfo.outputPath(`london-office-${testInfo.project.name}.png`) });
+  for (const [id, label, expected] of [
+    ['cv', 'CV', 'University of Oxford'],
+    ['projects', 'Projects', 'Momentum backtest'],
+    ['reading', 'Reading', 'The Peacock and the Sparrow'],
+    ['work', 'Work history', 'TradingHub'],
+    ['hobbies', 'Interests', 'Scuba diving'],
+  ]) {
+    const before = await canvas.getAttribute('data-orbit');
+    await page.locator('#office-targets').getByRole('button', { name: label, exact: true }).click();
+    await settled(page, id);
+    await expect(page.locator('#place-name')).toHaveText({
+      cv: 'Computer', projects: 'Project shelf', reading: 'Reading shelf', work: 'Pinboard', hobbies: 'Cabinet',
+    }[id]);
+    await expect(canvas).not.toHaveAttribute('data-orbit', before);
+    if (id === 'cv') {
+      const input = page.getByRole('textbox', { name: 'Terminal command' });
+      await expect(input).toBeFocused();
+      await input.fill('cat education.txt');
+      await input.press('Enter');
+    }
+    await expect(page.locator(id === 'cv' ? '#computer-terminal' : '#object-card')).toContainText(expected);
+    if (id !== 'cv') await expect(page.locator('#object-card')).toBeFocused();
+    await expect(page.locator('.view-bar > #back')).toBeVisible();
+    const backBounds = await page.locator('#back').boundingBox();
+    const placeBounds = await page.locator('#place-name').boundingBox();
+    expect(backBounds.height).toBe(placeBounds.height);
+    expect(backBounds.y).toBe(placeBounds.y);
+    expect(placeBounds.x - backBounds.x - backBounds.width).toBeCloseTo(10, 0);
+    expect(placeBounds.x + placeBounds.width).toBeCloseTo(frame.width - (isMobile ? 18 : 36), 0);
+    if (id === 'projects' || id === 'reading') {
+      expect(await page.evaluate(() => {
+        const scene = window.londonScene, root = scene.getObjectByName('London garden square');
+        const point = scene.position.clone().set(-2.5, 9.76 + (location.hash === '#projects' ? .48 : 1.55), -11.2);
+        return root.localToWorld(point).distanceTo(window.londonCamera.position);
+      })).toBeLessThan(isMobile ? .8 : .7);
+    }
+    await expect(page).toHaveURL(new RegExp(`/#${id}$`));
+    if (id === 'cv') await page.screenshot({ path: testInfo.outputPath(`london-computer-${testInfo.project.name}.png`) });
+    if (id === 'hobbies' && !isMobile) {
+      expect((await page.locator('#object-card').boundingBox()).height).toBeLessThan(frame.height * .6);
+    }
+    if (id === 'reading') {
+      await expect(page.locator('#object-card [data-reading-shelf]')).toHaveCount(0);
+      const books = await page.locator('#portfolio-source #reading li').evaluateAll(items => items.map(item => ({
+        title: item.querySelector('a').textContent, author: item.querySelector('span').textContent,
+      })));
+      for (const book of books) {
+        await expect(page.locator('#object-card .item-list').getByRole('button', { name: `${book.title} ${book.author}`, exact: true })).toBeVisible();
+      }
+      await page.screenshot({ path: testInfo.outputPath(`london-reading-${testInfo.project.name}.png`) });
+    }
+    if (id === 'work') {
+      await expect(page.locator('#object-card').getByRole('navigation', { name: 'Professional profiles' })).toHaveCount(0);
+      await expect(page.locator('#object-location')).toBeHidden();
+      await expect(page.locator('#place-name')).toHaveText('Pinboard');
+      const framing = await page.evaluate(() => {
+        const board = window.londonScene.getObjectByName('Work history pinboard');
+        const center = board.localToWorld(board.position.clone().set(0, 0, 0));
+        const top = board.localToWorld(center.clone().set(0, 1.05, 0)).project(window.londonCamera);
+        const bottom = board.localToWorld(center.clone().set(0, -1.05, 0)).project(window.londonCamera);
+        return { distance: window.londonCamera.position.distanceTo(center), height: Math.abs(top.y - bottom.y) / 2 };
+      });
+      expect(framing.distance).toBeLessThan(isMobile ? 1.6 : 1);
+      expect(framing.height).toBeGreaterThan(isMobile ? .3 : .5);
+      expect(await page.evaluate(async () => {
+        const url = document.querySelector('link[rel="modulepreload"][href*="/three-"]').href;
+        const module = await import(url);
+        const Raycaster = Object.values(module).find(value => value?.prototype?.intersectObject);
+        const ray = new Raycaster();
+        return Array.from({ length: 5 }, (_, index) => {
+          const item = window.londonScene.getObjectByName(`work-history-pass-${index}`);
+          const point = item.localToWorld(item.position.clone().set(0, 0, .03)).project(window.londonCamera);
+          ray.setFromCamera(point, window.londonCamera);
+          let hit = ray.intersectObject(window.londonScene, true)[0]?.object;
+          while (hit && hit !== item) hit = hit.parent;
+          return hit === item;
+        });
+      })).toEqual([true, true, true, true, true]);
+      await page.screenshot({ path: testInfo.outputPath(`london-work-history-${testInfo.project.name}.png`) });
+    }
+    await page.getByRole('button', { name: id === 'cv' ? 'Back to study' : 'Return to the study', exact: true }).click();
+    await settled(page, 'office');
+  }
+  await page.getByRole('button', { name: 'Back to London', exact: true }).click();
+  await settled(page, 'city');
+  await expect(explore).toBeFocused();
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Simple view' }).click();
-  await expect(page.locator('#work')).toBeVisible();
-  await expect(page.locator('#work .company-mark canvas')).toHaveCount(5);
-  await expect(page.locator('.explore-nav a[href="#cv"]')).toHaveText('CV');
-  await expect(page.locator('#cv-title')).toContainText('CV');
-  await expect(page.locator('.simple-download')).toBeVisible();
-  await expect(page.locator('.simple-download')).toHaveAttribute('download', 'Justin-Wong-Resume.pdf');
+  await settled(page, 'city');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(external).toEqual([]); expect(errors).toEqual([]);
 });
 
-test('no JavaScript and failed WebGL keep the public CV available', async ({ browser, baseURL, page }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false });
-  const plain = await context.newPage();
-  await plain.goto(baseURL);
-  await expect(plain.locator('#cv')).toBeVisible();
-  await expect(plain.locator('#work .access-card')).toHaveCount(5);
-  await expect(plain.locator('#projects a', { hasText: 'View on GitHub' })).toHaveAttribute('href', 'https://github.com/justinattw/Rectangle');
-  await context.close();
+test('computer commands run directly on the monitor with a cursor, education, PDF actions and exit', async ({ page }) => {
+  await observeScene(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#cv');
+  await settled(page, 'cv');
+  const input = page.getByRole('textbox', { name: 'Terminal command' });
+  const help = page.getByRole('button', { name: 'Backslash for commands' });
+  const menu = page.locator('#terminal-commands');
+  await expect(page.locator('#object-card')).toBeHidden();
+  await expect(page.locator('#office-targets')).toBeHidden();
+  await expect(page.locator('.study-screen-layer #computer-terminal')).toBeVisible();
+  await expect(page.locator('#computer-terminal form')).toContainText('justinattw$');
+  const laptop = await page.evaluate(() => {
+    const root = window.londonScene.getObjectByName('Study MacBook');
+    const base = root.getObjectByName('MacBook aluminium base');
+    const lid = root.getObjectByName('MacBook lid');
+    return {
+      thinBase: base.scale.y < base.scale.x * .025,
+      simpleDeck: !!root.getObjectByName('MacBook keyboard inset') && root.children.length === 3,
+      slimLid: root.getObjectByName('MacBook slim lid').scale.z < .015 && lid.children.length === 2,
+      hingedScreen: lid.getObjectByName('Study computer display')?.parent === lid && lid.rotation.x < 0,
+    };
+  });
+  expect(laptop).toEqual({ thinBase: true, simpleDeck: true, slimLid: true, hingedScreen: true });
+  await expect(input).toBeFocused();
+  await expect(page.locator('.terminal-caret')).toBeVisible();
+  const screen = await page.locator('#computer-terminal').boundingBox();
+  const canvas = await page.locator('#london-view').boundingBox();
+  expect(screen.width).toBeGreaterThan(canvas.width < 760 ? 250 : 500);
+  expect(screen.x).toBeGreaterThan(0);
+  expect(screen.x + screen.width).toBeLessThan(canvas.width);
+  const projected = await page.evaluate(() => {
+    const monitor = window.londonScene.getObjectByName('Study computer display');
+    const corners = [-1, 1].flatMap(x => [-1, 1].map(y => {
+      const point = monitor.localToWorld(monitor.position.clone().set(x * .42, y * .275, 0)).project(window.londonCamera);
+      return { x: (point.x + 1) * innerWidth / 2, y: (1 - point.y) * innerHeight / 2 };
+    }));
+    return {
+      x: Math.min(...corners.map(p => p.x)), y: Math.min(...corners.map(p => p.y)),
+      right: Math.max(...corners.map(p => p.x)), bottom: Math.max(...corners.map(p => p.y)),
+    };
+  });
+  expect(Math.abs(screen.x - projected.x)).toBeLessThan(2);
+  expect(Math.abs(screen.y - projected.y)).toBeLessThan(2);
+  expect(Math.abs(screen.x + screen.width - projected.right)).toBeLessThan(2);
+  expect(Math.abs(screen.y + screen.height - projected.bottom)).toBeLessThan(2);
+  await help.click();
+  await expect(menu.getByRole('button')).toHaveText(['download resume.pdf', 'open resume.pdf', 'cat education.txt', 'open linkedin', 'exit']);
+  await expect(input).toBeFocused();
+  await input.press('x');
+  await expect(input).toHaveValue('x');
+  await expect(menu).toBeVisible();
+  const menuBounds = await menu.boundingBox();
+  const lastCommand = await menu.getByRole('button', { name: 'exit', exact: true }).boundingBox();
+  expect(lastCommand.y + lastCommand.height).toBeLessThanOrEqual(menuBounds.y + menuBounds.height);
+  await input.press('ArrowDown');
+  await input.press('ArrowDown');
+  await expect(menu.getByRole('button', { name: 'cat education.txt', exact: true })).toHaveAttribute('aria-current', 'true');
+  await expect(input).toBeFocused();
+  await input.press('Enter');
+  await expect(page.locator('#computer-terminal pre')).toContainText('University of Oxford');
+  await expect(input).toBeFocused();
+  await expect(help).toBeVisible();
+  await input.press('\\');
+  await expect(menu).toBeVisible();
+  await expect(input).toBeFocused();
+  await input.press('ArrowUp');
+  await expect(menu.getByRole('button', { name: 'exit', exact: true })).toHaveAttribute('aria-current', 'true');
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await settled(page, 'cv');
+  await expect(input).toBeFocused();
+  await input.fill('not-a-command');
+  await input.press('Enter');
+  await expect(page.locator('#computer-terminal pre')).toContainText('Unknown command');
+  await help.click();
+  const downloadEvent = page.waitForEvent('download');
+  await menu.getByRole('button', { name: 'download resume.pdf', exact: true }).click();
+  expect((await downloadEvent).suggestedFilename()).toBe('Justin-Wong-Resume.pdf');
+  await page.context().route('**/justin-wong-resume.pdf', route => route.fulfill({ contentType: 'text/html', body: 'PDF destination' }));
+  await help.click();
+  const popupEvent = page.waitForEvent('popup');
+  await menu.getByRole('button', { name: 'open resume.pdf', exact: true }).click();
+  const popup = await popupEvent;
+  await expect(popup).toHaveURL(/\/justin-wong-resume.pdf$/);
+  await popup.close();
+  await page.context().route('https://www.linkedin.com/in/justinattw', route => route.fulfill({ contentType: 'text/html', body: 'LinkedIn profile' }));
+  await input.press('\\');
+  const linkedinEvent = page.waitForEvent('popup');
+  await menu.getByRole('button', { name: 'open linkedin', exact: true }).click();
+  const linkedin = await linkedinEvent;
+  await expect(linkedin).toHaveURL('https://www.linkedin.com/in/justinattw');
+  await linkedin.close();
+  await expect(page.locator('#computer-terminal pre')).toContainText('Opening LinkedIn');
+  const screenState = () => page.evaluate(() => window.londonScene.getObjectByName('Study computer display').material.map.image.toDataURL());
+  const linkedinScreen = await screenState();
+  await input.fill('cat education.txt');
+  await input.press('Enter');
+  const educationScreen = await screenState();
+  expect(educationScreen).not.toBe(linkedinScreen);
+  await input.fill('exit');
+  await input.press('Enter');
+  await settled(page, 'office');
+  await expect(input).toBeHidden();
+  expect(await screenState()).toBe(educationScreen);
+  await page.locator('#office-targets').getByRole('button', { name: 'CV', exact: true }).click();
+  await settled(page, 'cv');
+  await input.press('\\');
+  await expect(menu).toBeVisible();
+});
+
+test('room controls switch directly between Explore and five buttons without a paused fan-out', async ({ page, isMobile }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#office');
+  await settled(page, 'office');
+  const explore = page.getByRole('button', { name: 'Explore', exact: true });
+  const markers = page.locator('#office-targets button');
+  await expect(explore).toBeHidden();
+  for (let i = 0; i < (isMobile ? 2 : 4); i++) {
+    await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+    const visible = await page.evaluate(() => ({
+      explore: !document.querySelector('#explore').hidden,
+      objects: !document.querySelector('#office-targets').hidden,
+      opacities: [...document.querySelectorAll('#explore, #office-targets button')].map(button => getComputedStyle(button).opacity),
+    }));
+    expect(visible.explore).not.toBe(visible.objects);
+    expect(visible.opacities.every(opacity => opacity === '1')).toBe(true);
+  }
+  await expect(explore).toBeVisible();
+  await expect(page.locator('#office-targets')).toBeHidden();
+  for (let i = 0; i < 6; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  await settled(page, 'city');
+  await expect(page.locator('#office-targets')).toBeHidden();
+  await expect(explore).toBeVisible();
+  for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await settled(page, 'office');
+  await expect(explore).toBeHidden();
+  await expect(markers.first()).toBeVisible();
+  await page.locator('#office-targets').getByRole('button', { name: 'CV', exact: true }).click();
+  await settled(page, 'cv');
+  for (let i = 0; i < 24 && await page.locator('#london-view').getAttribute('data-view') !== 'city'; i++) {
+    await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  }
+  await settled(page, 'city');
+  await expect(page.locator('#object-card')).toBeHidden();
+  await expect(explore).toBeVisible();
+});
+
+test('books and passes stay in the world, deep links restore and reduced motion skips flights', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#projects');
+  await settled(page, 'projects');
+  await page.locator('#object-card .item-list').getByRole('button', { name: 'Momentum backtest' }).click();
+  await expect(page.locator('#london-view')).toHaveAttribute('data-item', 'book-0');
+  await settled(page, 'projects');
+  await expect(page.locator('#object-card')).toContainText('Exploring momentum investing');
+  await page.reload();
+  await settled(page, 'projects');
+  await expect(page.locator('#london-view')).toHaveAttribute('data-item', 'book-0');
+  await page.getByRole('button', { name: 'Back to shelf', exact: true }).click();
+  await settled(page, 'projects');
+  await expect(page.locator('#london-view')).toHaveAttribute('data-item', '');
+  await page.getByRole('button', { name: 'View contents' }).click();
+  await page.locator('#contents-list').getByRole('button', { name: /Work/ }).click();
+  await settled(page, 'work');
+  await page.locator('#object-card .item-list').getByRole('button', { name: 'GitHub', exact: true }).click();
+  await expect(page.locator('#london-view')).toHaveAttribute('data-item', 'job-0');
+  await expect(page.locator('#object-card')).toContainText('Notifications');
+  await expect(page.locator('#object-card').getByRole('heading', { name: 'GitHub', exact: true })).toHaveCount(1);
+  await expect(page.locator('.view-bar > #back')).toHaveText('Back to passes');
+  await expect(page.locator('#object-card .access-card h3')).toHaveCount(0);
+  await expect(page.locator('#object-card').getByRole('navigation', { name: 'Professional profiles' })).toHaveCount(0);
+  await page.goBack();
+  await settled(page, 'work');
+  await expect(page.locator('#london-view')).toHaveAttribute('data-item', '');
+});
+
+test('unavailable WebGL retains readable portfolio content', async ({ page }) => {
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (type, ...args) {
-      if (type.startsWith('webgl')) return null;
-      return original.call(this, type, ...args);
+    HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+      return type.startsWith('webgl') ? null : original.call(this, type, ...args);
     };
   });
   await page.goto('/');
-  await expect(page.locator('#scene-status')).toContainText('Use the simple view below');
-  await expect(page.locator('#work')).toBeVisible();
+  await expect(page.locator('#status')).toContainText('View contents');
+  await page.getByRole('button', { name: 'View contents' }).click();
+  await page.locator('#contents-list').getByRole('button', { name: /CV/ }).click();
+  await expect(page.locator('#object-card')).toContainText('University of Oxford');
 });
 
-test('print is sanitized, and reduced motion skips camera and object animation', async ({ page }) => {
+test('without JavaScript the established portfolio remains available', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('.no-script')).toBeVisible();
+    await expect(page.locator('#portfolio-source')).toBeVisible();
+    await expect(page.locator('#portfolio-source')).toContainText('Momentum backtest');
+    const profiles = page.locator('footer').getByRole('navigation', { name: 'Professional profiles' });
+    await expect(profiles).toBeVisible();
+    await expect(profiles.getByRole('link')).toHaveText(['LinkedIn ↗', 'GitHub ↗']);
+  } finally { await context.close(); }
+});
+
+test('footer profile links and world controls fit a narrow phone', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await expect(page.locator('#room-targets')).toBeVisible();
-  await enter(page, 'work');
-  await page.getByRole('button', { name: 'Flip GitHub', exact: true }).click();
-  await expect(page.locator('#room')).toHaveAttribute('data-moving', 'false');
-  await page.emulateMedia({ media: 'print' });
-  await expect(page.locator('#cv')).toBeVisible();
-  await expect(page.locator('#work')).toBeVisible();
-  await expect(page.locator('#projects')).not.toBeVisible();
-  await expect(page.locator('.study')).not.toBeVisible();
-  const text = await page.locator('#content').innerText();
-  expect(text).toContain('Nov 2023 – Feb 2024');
-  expect(text).toContain('Merit');
-  expect(text).not.toMatch(/visa|@|tel:|mailto:/i);
+  await settled(page, 'city');
+  const layout = await page.locator('footer > *').evaluateAll(elements => elements.map(element => {
+    const { left, right } = element.getBoundingClientRect();
+    return { left, right };
+  }));
+  for (let i = 0; i < layout.length; i++) {
+    expect(layout[i].left).toBeGreaterThanOrEqual(0);
+    expect(layout[i].right).toBeLessThanOrEqual(320);
+    if (i) expect(layout[i].left).toBeGreaterThanOrEqual(layout[i - 1].right);
+  }
+  await expect(page.locator('footer').getByRole('link', { name: 'LinkedIn' })).toBeVisible();
+  await expect(page.locator('footer').getByRole('link', { name: 'GitHub' })).toBeVisible();
 });

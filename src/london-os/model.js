@@ -157,16 +157,52 @@ export function buildLondon(scene) {
     }
   }
   function hall() {
-    const p = landmarkPoints[0];
-    mesh(cylinder, '#ad7253', p.x, .95, p.z, 1.8, 1.9, 1.55);
-    for (const y of [.23, 1.6, 1.9]) mesh(cylinder, '#e3d2ad', p.x, y, p.z, 1.88, .16, 1.63);
+    const group = landmark('Royal Albert Hall', 0);
+    group.scale.setScalar(.95);
+    const stone = '#e3d2ad';
+    mesh(cylinder, '#ad7253', 0, .95, 0, 1.8, 1.9, 1.55, group);
+    for (const y of [.23, 1.6, 1.9]) mesh(cylinder, stone, 0, y, 0, 1.88, .16, 1.63, group);
+    mesh(cylinder, '#c6a575', 0, 1.74, 0, 1.83, .16, 1.58, group);
     const dome = new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-    mesh(dome, '#777c67', p.x, 1.98, p.z, 1.68, .68, 1.45);
+    mesh(dome, '#777c67', 0, 1.98, 0, 1.68, .68, 1.45, group);
+    function arch(radius, stem) {
+      const shape = new THREE.Shape();
+      shape.moveTo(-radius, 0);
+      shape.lineTo(radius, 0);
+      shape.lineTo(radius, stem);
+      shape.absarc(0, stem, radius, 0, Math.PI);
+      shape.closePath();
+      return new THREE.ShapeGeometry(shape);
+    }
+    const frame = arch(.14, .3), glazing = arch(.105, .29);
+    const ribs = [];
     for (let i = 0; i < 20; i++) {
       const angle = i * Math.PI / 10;
-      const column = box('#e3d2ad', p.x + Math.cos(angle) * 1.76, 1.05, p.z + Math.sin(angle) * 1.53, .13, .86, .13);
-      column.rotation.y = -angle;
+      const bay = new THREE.Group();
+      bay.name = 'Albert Hall arcade bay';
+      bay.position.set(Math.cos(angle) * 1.81, 0, Math.sin(angle) * 1.56);
+      bay.rotation.y = Math.atan2(Math.cos(angle) / 1.8, Math.sin(angle) / 1.55);
+      group.add(bay);
+      for (const y of [.42, 1.02]) {
+        mesh(frame, stone, 0, y, 0, 1, 1, 1, bay);
+        mesh(glazing, '#53676c', 0, y + .02, .006, 1, 1, 1, bay);
+        box(stone, 0, y + .19, .013, .018, .34, .018, bay);
+        box(stone, 0, y + .18, .013, .21, .018, .018, bay);
+      }
+      box(stone, 0, 1.74, .015, .27, .075, .025, bay);
+      const columnAngle = angle + Math.PI / 20;
+      const column = box(stone, Math.cos(columnAngle) * 1.79, 1.03, Math.sin(columnAngle) * 1.54, .1, 1.06, .1, group);
+      column.rotation.y = -columnAngle;
+      const points = [];
+      for (let step = 0; step <= 12; step++) {
+        const latitude = step / 12 * Math.PI / 2;
+        points.push(new THREE.Vector3(Math.sin(latitude) * Math.cos(angle) * 1.69, 1.985 + Math.cos(latitude) * .68, Math.sin(latitude) * Math.sin(angle) * 1.46));
+      }
+      for (let step = 1; step < points.length; step++) ribs.push(points[step - 1], points[step]);
     }
+    const roofRibs = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ribs), new THREE.LineBasicMaterial({ color: '#bdb79d' }));
+    roofRibs.name = 'Albert Hall dome ribs';
+    group.add(roofRibs);
   }
   function westminster() {
     const p = landmarkPoints[1];

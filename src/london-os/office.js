@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createPhysicalObjects } from '../physical-objects.js';
 import { createHobbyCupboard } from '../hobby-cupboard.js';
+import { createCat } from '../cat.js';
+import { createWindowPlants } from '../window-plants.js';
 
 export function buildOffice(root, floor, data, schedule) {
   const cube = new THREE.BoxGeometry(), materials = new Map();
@@ -43,8 +45,8 @@ export function buildOffice(root, floor, data, schedule) {
     return texture;
   }
   const ash = '#aaa59b', metal = '#353c3e', chalk = '#e0e0d9';
-  box(.1, floor + .14, -9.45, 5.7, .04, 4.1, '#aaa9a1');
-  box(.1, floor + .165, -9.45, 5.4, .015, 3.8, '#bdbdb5');
+  box(.1, floor + .14, -9.45, 4.2, .04, 2.9, '#aaa9a1').name = 'Study rug';
+  box(.1, floor + .165, -9.45, 4, .015, 2.7, '#bdbdb5');
   box(.35, floor + .88, -10.15, 2.9, .15, 1.3, ash);
   for (const x of [-.85, 1.55]) for (const z of [-10.65, -9.65]) box(x, floor + .47, z, .1, .8, .1, metal);
   box(.35, floor + 1.47, -10.45, .96, .72, .12, metal);
@@ -53,12 +55,12 @@ export function buildOffice(root, floor, data, schedule) {
   const display = surface((ctx, w, h) => {
     ctx.fillStyle = '#242b2d'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#ecece4'; ctx.font = '32px monospace';
-    ctx.fillText('justin@study', 28, 62);
+    ctx.fillText('\\ for commands', 28, 62);
     ctx.font = '23px monospace'; ctx.fillStyle = '#aebbc1';
-    ctx.fillText('$ open resume.pdf', 28, 120);
-    ctx.fillText('Software engineer', 28, 170);
+    ctx.fillText('justinattw$ _', 28, 270);
   }, 512, 320);
   const screen = object(new THREE.PlaneGeometry(.84, .55), .35, floor + 1.47, -10.382, new THREE.MeshBasicMaterial({ map: display, toneMapped: false }));
+  screen.name = 'Study computer display';
   screen.userData.destination = 'cv';
   box(.3, floor + .98, -9.83, .84, .045, .28, chalk);
   box(.98, floor + .98, -9.86, .16, .04, .23, metal);
@@ -124,14 +126,68 @@ export function buildOffice(root, floor, data, schedule) {
       child.material.color.setHSL(hsl.h, Math.min(hsl.s, .08), hsl.l);
     }
   });
+  const plantsRoot = new THREE.Group();
+  plantsRoot.name = 'Study plants';
+  plantsRoot.position.y = floor + .13;
+  root.add(plantsRoot);
+  const plants = createWindowPlants({ scene: plantsRoot, cylinder, material, includeBanana: false });
+  plants.monstera.name = 'Monstera';
+  plants.monstera.position.set(-2.6, 0, -7.3);
+  plants.monstera.scale.setScalar(.85);
+  plants.bamboo.name = 'Bamboo';
+  plants.bamboo.position.set(1.7, 0, -11.7);
+  plants.bamboo.scale.set(.7, .8, .7);
+
+  const catRoot = new THREE.Group();
+  catRoot.name = 'Study cat routine';
+  catRoot.position.y = floor + .13;
+  root.add(catRoot);
+  const cat = createCat({
+    scene: catRoot, sphere, material, pawColor: '#202325', start: [-1.6, .03, -8.25],
+    route: [
+      { action: 'groom', duration: 3 },
+      { action: 'walk', duration: 2, to: [-2.05, .03, -7.05] },
+      { action: 'drink-water', duration: 4, facing: 0 },
+      { action: 'walk', duration: 2, to: [-2.05, .03, -7.8] },
+      { action: 'walk', duration: 3, to: [1.15, .03, -8.97] },
+      { action: 'jump-chair', duration: 1.3, to: [.35, .42, -8.97], clearance: .12 },
+      { action: 'sit', duration: 2 },
+      { action: 'jump-desk', duration: 1.3, to: [.95, .8, -9.8], clearance: .14 },
+      { action: 'play-keyboard', duration: 3, facing: Math.PI },
+      { action: 'walk-desk', duration: 1, to: [.95, .8, -9.6] },
+      { action: 'jump-chair', duration: 1.3, to: [.35, .42, -8.97], clearance: .12 },
+      { action: 'jump-down', duration: 1.3, to: [1.15, .03, -8.97], clearance: .12 },
+      { action: 'walk', duration: 1.5, to: [1.15, .03, -8] },
+      { action: 'walk', duration: 4, to: [-2.15, .03, -7.65] },
+      { action: 'play-plant', duration: 4, facing: Math.atan2(-.35, -.45) },
+      { action: 'walk', duration: 2, to: [-1.6, .03, -8.25] },
+    ],
+  });
+  cat.root.name = 'Black study cat';
+  const bowl = new THREE.Group();
+  bowl.name = 'Cat water bowl';
+  root.add(bowl);
+  cylinder(-1.6, floor + .23, -7.05, .1, .26, ash, bowl);
+  cylinder(-1.6, floor + .37, -7.05, .18, .1, chalk, bowl, .20);
+  cylinder(-1.6, floor + .423, -7.05, .17, .006, '#7dabb9', bowl);
   const points = {
     cv: new THREE.Vector3(.35, floor + 1.47, -10.35),
-    projects: new THREE.Vector3(-2.5, floor + .6, -11.2),
-    reading: new THREE.Vector3(-2.5, floor + 1.88, -11.2),
+    projects: new THREE.Vector3(-2.5, floor + .48, -11.2),
+    reading: new THREE.Vector3(-2.5, floor + 1.55, -11.2),
     work: new THREE.Vector3(2.72, floor + 1.45, -12.05),
   };
   root.updateMatrixWorld(true);
   const anchors = Object.fromEntries(Object.entries(points).map(([id, p]) => [id, root.localToWorld(p)]));
   anchors.hobbies = cupboard.localToWorld(new THREE.Vector3(0, 2.7, .65));
-  return { anchors, physical, hobbies };
+  return {
+    anchors, physical, hobbies, cat, monitor: screen,
+    updateRoom(delta, time, view, reduced) {
+      const visible = view === 'city' || view === 'office';
+      plantsRoot.visible = catRoot.visible = visible;
+      const moving = view === 'office' && !reduced;
+      cat.update(moving ? delta : 0);
+      if (visible) plants.update(time, moving && cat.root.userData.action === 'play-plant');
+      return moving;
+    },
+  };
 }

@@ -1,11 +1,10 @@
 import * as THREE from 'three';
 
-export function createCat({ scene, sphere, material }) {
+export function createCat({ scene, sphere, material, route: itinerary, start = [-2.4, .03, -.25], pawColor = '#e6e5df' }) {
   const root = new THREE.Group();
   root.scale.setScalar(.8);
   scene.add(root);
   const coat = '#202325';
-  const cream = '#e6e5df';
   const torso = new THREE.Group();
   torso.name = 'cat-torso';
   root.add(torso);
@@ -66,7 +65,7 @@ export function createCat({ scene, sphere, material }) {
     knee.add(ankle);
     sphere(0, -.04, 0, x < 0 ? .09 : .06, .105, x < 0 ? .075 : .055, coat, leg);
     sphere(0, -.055, 0, .043, .085, .042, coat, knee);
-    sphere(.025, -.005, 0, .07, .045, .06, cream, ankle);
+    sphere(.025, -.005, 0, .07, .045, .06, pawColor, ankle);
     legs.push({ upper: leg, knee, ankle, hind: x < 0 });
   }
   const tail = new THREE.Group();
@@ -78,8 +77,8 @@ export function createCat({ scene, sphere, material }) {
   ]);
   tail.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 24, .045, 10, false), material(coat)));
   root.traverse(mesh => { if (mesh.isMesh) mesh.castShadow = false; });
-  const floor = new THREE.Vector3(-2.4, .03, -.25);
-  const route = [
+  const floor = new THREE.Vector3(...start);
+  const route = itinerary ?? [
     { action: 'groom', duration: 4 },
     { action: 'walk', duration: 1.5, to: [-2.4, .03, .6] },
     { action: 'walk', duration: 4, to: [.85, .03, .6] },

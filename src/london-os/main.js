@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
 import { buildLondon } from './model.js';
 import { destinations, icon, readPortfolio } from './portfolio.js';
 import fontLicense from './fonts/OFL.txt?url';
+import { createTerminal } from '../terminal.js';
 
 const canvas = document.querySelector('#london-view');
 const status = document.querySelector('#status');
@@ -23,6 +25,8 @@ let model, office, renderer, controls, camera, focusView;
 let view = 'city', selected = null, page = 0, ready = false;
 let schedule = () => {};
 let pendingFocus = false;
+let terminal;
+let terminalRenderer, terminalScene, terminalSurface;
 
 document.querySelectorAll('[data-icon]').forEach(element => { element.innerHTML = icon(element.dataset.icon); });
 document.querySelector('#font-license').href = fontLicense;
@@ -30,7 +34,7 @@ for (const chapter of chapters) {
   const marker = document.createElement('button');
   marker.type = 'button'; marker.className = 'world-marker office-marker';
   marker.dataset.destination = chapter.id;
-  marker.setAttribute('aria-controls', 'object-card');
+  marker.setAttribute('aria-controls', chapter.id === 'cv' ? 'computer-terminal' : 'object-card');
   marker.innerHTML = `${icon(chapter.icon)}<span>${chapter.label}</span>`;
   marker.addEventListener('click', () => navigate(chapter.id));
   targets.append(marker);
@@ -86,6 +90,7 @@ function resetItems() {
 function navigate(destination, { item = null, history = true, animate = true, focus = history, moveCamera = true } = {}) {
   if (!['city', 'office', ...chapters.map(chapter => chapter.id)].includes(destination)) return;
   pendingFocus = focus;
+  if (terminal) terminal.element.hidden = true;
   if (selected) resetItems();
   view = destination; selected = item; page = 0;
   if (ready && destination !== 'city') {
@@ -101,14 +106,15 @@ function navigate(destination, { item = null, history = true, animate = true, fo
   document.querySelector('#credits').hidden = true;
   creditsToggle.setAttribute('aria-expanded', 'false');
   document.body.dataset.view = destination;
-  card.hidden = !chapters.some(chapter => chapter.id === destination);
+  card.hidden = !chapters.some(chapter => chapter.id === destination) || (ready && destination === 'cv');
+  (card.hidden ? bar : card).prepend(back);
   bar.hidden = destination === 'city';
   document.querySelector('#back-label').textContent = item
     ? item.kind === 'job' ? 'Back to passes' : 'Back to shelf'
     : destination === 'office' ? 'Back to London' : 'Back to study';
   document.querySelector('#place-name').textContent = destination === 'city' || destination === 'office'
     ? 'The Study' : chapters.find(chapter => chapter.id === destination).object;
-  if (!card.hidden) showContent();
+  if (!card.hidden || (ready && destination === 'cv')) showContent();
   if (history) {
     const hash = destination === 'city' ? '' : `#${destination}${item ? `/${item.kind}-${item.index}` : ''}`;
     if (location.hash !== hash) window.history[history === 'replace' ? 'replaceState' : 'pushState'](null, '', location.pathname + location.search + hash);
@@ -139,8 +145,9 @@ function readLocation(focus = false) {
   navigate(destination || 'city', { history: false, animate: false, focus });
 }
 
-function appendContent(element) {
+function appendContent(element, omitHeading = false) {
   const clone = element.cloneNode(true);
+  if (omitHeading) clone.querySelector('h3')?.remove();
   for (const node of [clone, ...clone.querySelectorAll('[id]')]) node.removeAttribute('id');
   clone.removeAttribute('aria-labelledby');
   content.append(clone);
@@ -149,12 +156,41 @@ function appendContent(element) {
 function showContent() {
   const chapter = chapters.find(chapter => chapter.id === view);
   document.querySelector('#object-title').textContent = selected?.name || chapter.label;
-  document.querySelector('#object-location').textContent = chapter.object;
+  const objectLocation = document.querySelector('#object-location');
+  objectLocation.textContent = chapter.object;
+  objectLocation.hidden = view === 'work';
   content.replaceChildren();
+  if (view === 'cv' && ready) {
+    if (!terminal) {
+      const education = [...source.querySelectorAll('#cv .education')].map(article => [
+        article.querySelector('h3').textContent,
+        [...article.querySelector('p').childNodes].map(node => node.nodeName === 'BR' ? '\n' : node.textContent).join(''),
+        ...[...article.querySelectorAll('div > *')].map(part => part.textContent),
+      ].join('\n')).join('\n\n');
+      terminal = createTerminal({
+        container: terminalRenderer.domElement,
+        onCV: () => terminal.showCV(education),
+        onEducation: () => terminal.showCV(education),
+        onExit: () => navigate('office'),
+        commandNames: ['download resume.pdf', 'open resume.pdf', 'cat education.txt', 'exit'],
+        keepHelpVisible: true,
+      });
+      terminalSurface = new CSS3DObject(terminal.element);
+      terminalSurface.position.copy(office.monitor.getWorldPosition(new THREE.Vector3()));
+      terminalSurface.quaternion.copy(office.monitor.getWorldQuaternion(new THREE.Quaternion()));
+      const scale = office.monitor.getWorldScale(new THREE.Vector3());
+      terminalSurface.scale.set(scale.x * .84 / 640, scale.y * .55 / 420, 1);
+      terminalScene.add(terminalSurface);
+      terminal.showCV('');
+    }
+    terminal.element.hidden = false;
+    pendingFocus = true;
+    return;
+  }
   if (selected) {
     const selector = selected.kind === 'job' ? '#work .access-card' : selected.kind === 'book' ? '#projects .project-card' : '#reading li';
     const element = source.querySelectorAll(selector)[selected.index];
-    appendContent(element);
+    appendContent(element, selected.kind === 'job');
     if (selected.kind === 'book') {
       const pages = document.createElement('div');
       pages.className = 'page-controls';
@@ -172,6 +208,8 @@ function showContent() {
   } else {
     const section = source.querySelector(`#${view}`).cloneNode(true);
     section.querySelector('h2')?.remove();
+    if (view === 'reading') section.querySelectorAll('[data-reading-shelf]').forEach(shelf => shelf.remove());
+    if (view === 'work') section.querySelector('.access-cards')?.remove();
     appendContent(section);
     if (office && ['projects', 'reading', 'work'].includes(view)) {
       const kind = { projects: 'book', reading: 'reading', work: 'job' }[view];
@@ -184,6 +222,11 @@ function showContent() {
         const button = document.createElement('button');
         button.type = 'button';
         const text = document.createElement('span'); text.textContent = item.name;
+        if (view === 'reading') {
+          const author = document.createElement('small');
+          author.textContent = data.reading[item.index].author;
+          text.append(document.createTextNode(' '), author);
+        }
         button.append(text); button.insertAdjacentHTML('beforeend', icon('arrow'));
         button.addEventListener('click', () => navigate(view, { item }));
         list.append(button);
@@ -197,6 +240,7 @@ function showContent() {
 function unavailable(error) {
   console.error('London study unavailable:', error);
   ready = false;
+  if (terminal) terminal.element.hidden = true;
   focusView = undefined;
   if (controls) controls.enabled = false;
   explore.hidden = targets.hidden = true;
@@ -215,6 +259,10 @@ function start() {
   renderer.shadowMap.autoUpdate = false;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = .95;
+  terminalRenderer = new CSS3DRenderer();
+  terminalRenderer.domElement.className = 'study-screen-layer';
+  document.querySelector('#world').append(terminalRenderer.domElement);
+  terminalScene = new THREE.Scene();
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#292d2d');
   scene.fog = new THREE.Fog('#292d2d', 35, 185);
@@ -233,19 +281,22 @@ function start() {
   controls.enablePan = false;
   controls.minPolarAngle = Math.PI * .07;
   controls.maxPolarAngle = Math.PI * .47;
-  controls.minDistance = .7;
+  controls.minDistance = .16;
   controls.maxDistance = 190;
   controls.rotateSpeed = .5;
   let frame = 0, motion, lost = false, previousTime = performance.now();
   const homeDirection = new THREE.Vector3(.45, .72, 1).normalize();
   schedule = () => { if (!frame && !lost) frame = requestAnimationFrame(render); };
   controls.addEventListener('change', schedule);
+  reducedMotion.addEventListener('change', schedule);
+  document.addEventListener('visibilitychange', schedule);
   office = model.ensureOffice(data, schedule);
 
   function render(now) {
     frame = 0;
     if (lost) return;
-    const delta = Math.min(.05, (now - previousTime) / 1000);
+    const elapsed = Math.max(0, (now - previousTime) / 1000);
+    const delta = Math.min(.05, elapsed);
     previousTime = now;
     if (motion) {
       const t = reducedMotion.matches ? 1 : Math.min(1, (now - motion.start) / motion.duration);
@@ -259,12 +310,13 @@ function start() {
     }
     const cabinetMoving = office?.hobbies.update(delta, view === 'hobbies', reducedMotion.matches) || false;
     const objectMoving = office?.physical.step(now, reducedMotion.matches) || false;
+    const roomMoving = office?.updateRoom(Math.min(.25, elapsed), now / 1000, view, reducedMotion.matches || document.hidden) || false;
     const radius = camera.position.distanceTo(controls.target);
     const distance = camera.position.distanceTo(model.roomCenter);
     if (!motion) {
       let destination = view;
       if (distance >= 24) destination = 'city';
-      else if ((distance <= 16 && view === 'city') || (distance >= 16 && !card.hidden)) destination = 'office';
+      else if ((distance <= 16 && view === 'city') || (distance >= 16 && view !== 'city' && view !== 'office')) destination = 'office';
       if (destination !== view) {
         const restoreFocus = targets.contains(document.activeElement) || card.contains(document.activeElement);
         navigate(destination, { history: 'replace', focus: restoreFocus, moveCamera: false });
@@ -277,10 +329,17 @@ function start() {
     scene.fog.far = radius + 115;
     if (cabinetMoving || objectMoving) renderer.shadowMap.needsUpdate = true;
     renderer.render(scene, camera);
+    if (terminal) {
+      terminal.element.hidden = view !== 'cv' || Boolean(motion);
+      if (!terminal.element.hidden) terminalRenderer.render(terminalScene, camera);
+    }
     positionMarkers();
     if (pendingFocus && !motion) {
-      const destination = card.hidden ? view === 'city' ? explore : targets.querySelector('button') : card;
-      destination.focus({ preventScroll: true });
+      if (view === 'cv' && terminal) terminal.focus();
+      else {
+        const destination = card.hidden ? view === 'city' ? explore : targets.querySelector('button') : card;
+        destination.focus({ preventScroll: true });
+      }
       pendingFocus = false;
     }
     canvas.dataset.view = view;
@@ -291,7 +350,9 @@ function start() {
     const center = projectPoint(model.roomCenter);
     canvas.dataset.roomCenter = `${center.x.toFixed(2)},${center.y.toFixed(2)}`;
     canvas.dataset.furnishedItems = office.physical.items.length;
-    if (motion || cabinetMoving || objectMoving) schedule();
+    canvas.dataset.catAction = office.cat.root.userData.action;
+    canvas.dataset.catPosition = office.cat.root.position.toArray().map(value => value.toFixed(3)).join(',');
+    if (motion || cabinetMoving || objectMoving || roomMoving) schedule();
   }
 
   function projectPoint(point) {
@@ -312,8 +373,9 @@ function start() {
   function positionMarkers() {
     const distance = camera.position.distanceTo(model.roomCenter);
     const amount = 1 - THREE.MathUtils.smoothstep(distance, 16, 24);
-    explore.hidden = amount === 1 || !card.hidden;
-    targets.hidden = amount === 0 || !card.hidden;
+    const focused = view !== 'city' && view !== 'office';
+    explore.hidden = amount === 1 || focused;
+    targets.hidden = amount === 0 || focused;
     explore.style.opacity = 1 - amount;
     explore.style.pointerEvents = amount < .5 ? 'auto' : 'none';
     explore.tabIndex = amount < .5 ? 0 : -1;
@@ -342,6 +404,15 @@ function start() {
     }
   }
 
+  function frameCard() {
+    const mobile = canvas.clientWidth <= 760;
+    camera.clearViewOffset();
+    if (!card.hidden) {
+      const rect = card.getBoundingClientRect();
+      const top = bar.getBoundingClientRect().bottom;
+      camera.setViewOffset(canvas.clientWidth, canvas.clientHeight, mobile ? 0 : rect.width * .58, mobile ? (canvas.clientHeight - top - rect.top) / 2 : 0, canvas.clientWidth, canvas.clientHeight);
+    }
+  }
   focusView = animate => {
     const mobile = canvas.clientWidth <= 760;
     const target = selected
@@ -350,20 +421,19 @@ function start() {
     const radius = view === 'city' ? mobile ? 83 : 62
       : view === 'office' ? mobile ? 13 : 7.8
         : selected ? mobile ? 3 : 1.8
-          : view === 'work' ? mobile ? 1.45 : .85
+          : view === 'cv' ? mobile ? .65 : .38
+            : view === 'projects' ? mobile ? .62 : .46
+              : view === 'reading' ? mobile ? .7 : .62
+                : view === 'work' ? mobile ? 1.45 : .85
             : view === 'hobbies' ? mobile ? 2.1 : 1.4
               : mobile ? 3.5 : 2.2;
     const direction = view === 'city' ? homeDirection
-      : view === 'work' ? new THREE.Vector3(-.18, .08, 1).normalize()
+      : view === 'cv' ? new THREE.Vector3(.025, .025, 1).normalize()
+        : view === 'work' ? new THREE.Vector3(-.18, .08, 1).normalize()
         : view === 'hobbies' ? new THREE.Vector3(-1, .22, .45).normalize()
           : new THREE.Vector3(.04, selected ? .18 : view === 'office' ? .48 : .22, 1).normalize();
     const to = direction.clone().multiplyScalar(radius).add(target);
-    camera.clearViewOffset();
-    if (!card.hidden) {
-      const rect = card.getBoundingClientRect();
-      const top = bar.getBoundingClientRect().bottom;
-      camera.setViewOffset(canvas.clientWidth, canvas.clientHeight, mobile ? 0 : rect.width * .58, mobile ? (canvas.clientHeight - top - rect.top) / 2 : 0, canvas.clientWidth, canvas.clientHeight);
-    }
+    frameCard();
     if (animate && !reducedMotion.matches) {
       controls.enabled = false;
       motion = { start: performance.now(), duration: view === 'city' ? 1400 : 1100, from: camera.position.clone(), to, fromTarget: controls.target.clone(), target };
@@ -379,6 +449,7 @@ function start() {
     camera.aspect = canvas.clientWidth / canvas.clientHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+    terminalRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
     focusView(false);
   }
   document.querySelector('.orbit-controls').addEventListener('click', event => {
@@ -399,6 +470,10 @@ function start() {
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), camera);
     for (const hit of raycaster.intersectObject(model.neighbourhood, true)) {
+      if (hit.object.userData.destination) {
+        navigate(hit.object.userData.destination);
+        break;
+      }
       let object = hit.object;
       while (object && !object.userData.interaction) object = object.parent;
       if (!object) continue;
@@ -416,8 +491,14 @@ function start() {
   camera.aspect = canvas.clientWidth / canvas.clientHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+  terminalRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
   readLocation();
   new ResizeObserver(resize).observe(canvas);
+  new ResizeObserver(() => {
+    if (!ready || card.hidden || !canvas.clientWidth || !canvas.clientHeight) return;
+    frameCard();
+    schedule();
+  }).observe(card);
   renderer.shadowMap.needsUpdate = true;
   status.hidden = true;
   document.querySelector('.orbit-controls').hidden = false;

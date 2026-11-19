@@ -2,7 +2,7 @@ export const destinations = [
   { id: 'cv', label: 'CV', object: 'The computer', icon: 'computer' },
   { id: 'projects', label: 'Projects', object: 'The project shelf', icon: 'books' },
   { id: 'reading', label: 'Reading', object: 'The reading shelf', icon: 'book' },
-  { id: 'work', label: 'Work history', object: 'The work-history pinboard', icon: 'badge' },
+  { id: 'work', label: 'Work history', object: 'Pinboard', icon: 'badge' },
   { id: 'hobbies', label: 'Interests', object: 'The interests cupboard', icon: 'cabinet' },
 ];
 

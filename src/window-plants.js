@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export function createWindowPlants({ scene, cylinder, material }) {
+export function createWindowPlants({ scene, cylinder, material, includeBanana = true }) {
   const leaves = [];
   function stem(points, parent = scene) {
     const curve = new THREE.CatmullRomCurve3(points.map(point => new THREE.Vector3(...point)));
@@ -85,23 +85,25 @@ export function createWindowPlants({ scene, cylinder, material }) {
       }
     }
   }
-  pot(8.35, -3.3, '#758073', .43);
-  const banana = new THREE.Shape();
-  banana.moveTo(0, 0);
-  banana.bezierCurveTo(-.32, .25, -.4, 1.15, 0, 1.65);
-  banana.bezierCurveTo(.4, 1.15, .32, .25, 0, 0);
-  const bananaGeometry = new THREE.ShapeGeometry(banana);
-  for (let index = 0; index < 6; index++) {
-    const angle = index * 2.4;
-    const x = 8.35 + Math.cos(angle) * .35;
-    const y = .85 + (index % 3) * .32;
-    const z = -3.3 + Math.sin(angle) * .3;
-    stem([[8.35, .53, -3.3], [8.35, y, -3.3], [x, y + .12, z]]);
-    const leaf = new THREE.Mesh(bananaGeometry, new THREE.MeshStandardMaterial({ color: index % 2 ? '#476944' : '#698449', side: THREE.DoubleSide, roughness: .75 }));
-    leaf.position.set(x, y, z);
-    leaf.rotation.set(-.2, Math.sin(angle) * .8, Math.cos(angle) * .45);
-    leaf.scale.setScalar(.7 + (index % 2) * .2);
-    scene.add(leaf);
+  if (includeBanana) {
+    pot(8.35, -3.3, '#758073', .43);
+    const banana = new THREE.Shape();
+    banana.moveTo(0, 0);
+    banana.bezierCurveTo(-.32, .25, -.4, 1.15, 0, 1.65);
+    banana.bezierCurveTo(.4, 1.15, .32, .25, 0, 0);
+    const bananaGeometry = new THREE.ShapeGeometry(banana);
+    for (let index = 0; index < 6; index++) {
+      const angle = index * 2.4;
+      const x = 8.35 + Math.cos(angle) * .35;
+      const y = .85 + (index % 3) * .32;
+      const z = -3.3 + Math.sin(angle) * .3;
+      stem([[8.35, .53, -3.3], [8.35, y, -3.3], [x, y + .12, z]]);
+      const leaf = new THREE.Mesh(bananaGeometry, new THREE.MeshStandardMaterial({ color: index % 2 ? '#476944' : '#698449', side: THREE.DoubleSide, roughness: .75 }));
+      leaf.position.set(x, y, z);
+      leaf.rotation.set(-.2, Math.sin(angle) * .8, Math.cos(angle) * .45);
+      leaf.scale.setScalar(.7 + (index % 2) * .2);
+      scene.add(leaf);
+    }
   }
   let ruffle = 0;
   return {

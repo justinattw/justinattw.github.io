@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: '../tests',
-  testMatch: ['london-os.spec.js', 'gardens.spec.js'],
+  testMatch: ['london-os.spec.js', 'gardens.spec.js', 'terminal.spec.js', 'cat.spec.js'],
   workers: 2,
   use: { baseURL: 'http://127.0.0.1:4182' },
   webServer: {

@@ -150,19 +150,53 @@ export function buildGardens(scene, { uniformRoofline = false, flatGround = fals
   terrace(x, z, width, depth, height, 0, true);
   box(wood, x, floor, z - .05, width - .42, .20, depth - .40);
   for (let i = -7; i <= 7; i++) box(i % 2 ? '#996c48' : '#916041', i * .47, floor + .105, z - .05, .455, .025, depth - .42);
-  box('#314c3b', x, floor + 1.35, wallZ, width - .40, 2.70, .29);
-  box('#314c3b', x - width / 2 + .28, floor + 1.35, z - .97, .30, 2.70, 3.86);
-  box(trim, x, floor + 2.74, wallZ, width - .26, .18, .42);
-  box(trim, x - width / 2 + .28, floor + 2.74, z - .97, .44, .18, 3.93);
+  const windows = [-1.34, 0, 1.34].filter(u => !pinboardWall || u !== 1.34).map(u => u + .56);
+  if (cornwallGardens) {
+    // Build around the openings, rather than painting glazing onto a solid wall.
+    const bottom = .895, top = 2.345, wallWidth = width - .4;
+    box('#314c3b', x, floor + bottom / 2, wallZ, wallWidth, bottom, .29);
+    box('#314c3b', x, floor + (top + 2.7) / 2, wallZ, wallWidth, 2.7 - top, .29);
+    let left = x - wallWidth / 2;
+    for (const center of windows) {
+      const right = center - .42;
+      box('#314c3b', (left + right) / 2, floor + 1.62, wallZ, right - left, 1.45, .29);
+      left = center + .42;
+    }
+    const right = x + wallWidth / 2;
+    box('#314c3b', (left + right) / 2, floor + 1.62, wallZ, right - left, 1.45, .29);
+    const glazing = new THREE.MeshStandardMaterial({ color: '#d8ebef', transparent: true, opacity: .12, roughness: .08, depthWrite: false, side: THREE.DoubleSide });
+    for (const center of windows) {
+      for (const side of [-1, 1]) {
+        box('#ffffff', center + side * .3775, floor + 1.62, wallZ + .18, .085, 1.45, .10);
+        box('#ffffff', center, floor + 1.62 + side * .6825, wallZ + .18, .84, .085, .10);
+      }
+      box('#ffffff', center, floor + 1.50, wallZ + .23, .67, .035, .045);
+      box('#ffffff', center, floor + 1.62, wallZ + .23, .025, 1.28, .045);
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(.67, 1.28), glazing);
+      pane.name = 'Study window glazing';
+      pane.position.set(center, floor + 1.62, wallZ);
+      scene.add(pane);
+    }
+    const sideLength = depth - .72, sideZ = wallZ + sideLength / 2;
+    for (const side of [-1, 1]) {
+      box('#314c3b', x + side * (width / 2 - .28), floor + 1.35, sideZ, .30, 2.70, sideLength);
+      box('#ffffff', x + side * (width / 2 - .28), floor + 2.74, sideZ, .44, .18, sideLength + .07);
+      box('#ffffff', x + side * (width / 2 - .45), floor + .20, sideZ, .045, .18, sideLength);
+    }
+  } else {
+    box('#314c3b', x, floor + 1.35, wallZ, width - .40, 2.70, .29);
+    box('#314c3b', x - width / 2 + .28, floor + 1.35, z - .97, .30, 2.70, 3.86);
+    box(trim, x - width / 2 + .28, floor + 2.74, z - .97, .44, .18, 3.93);
+    roof(x - 2.36, floor + 3.06, z - 1.98, 3.04, .57, 2.06);
+    for (const center of windows) {
+      shape('arch', '#c4b58a', center, floor + 1.62, wallZ + .18, .84, 1.45, .10);
+      shape('arch', '#759191', center, floor + 1.62, wallZ + .24, .67, 1.28, .06);
+      box('#e1d0a6', center, floor + 1.50, wallZ + .28, .69, .045, .05);
+    }
+  }
+  box(cornwallGardens ? '#ffffff' : trim, x, floor + 2.74, wallZ, width - .26, .18, .42);
   box(stone, x, floor + .28, z + depth / 2 - .24, width - .34, .41, .18);
   box(stone, x + width / 2 - .26, floor + .28, z, .18, .41, depth - .36);
-  roof(x - 2.36, floor + 3.06, z - 1.98, 3.04, .57, 2.06);
-  for (const u of [-1.34, 0, 1.34]) {
-    if (pinboardWall && u === 1.34) continue;
-    shape('arch', '#c4b58a', u + .56, floor + 1.62, wallZ + .18, .84, 1.45, .10);
-    shape('arch', '#759191', u + .56, floor + 1.62, wallZ + .24, .67, 1.28, .06);
-    box('#e1d0a6', u + .56, floor + 1.50, wallZ + .28, .69, .045, .05);
-  }
   if (furnish) {
     box('#8d5342', .40, floor + .129, z + .55, 3.65, .027, 3.33);
     box('#b98458', .40, floor + .145, z + .55, 3.41, .024, 3.10);

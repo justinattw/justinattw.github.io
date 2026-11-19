@@ -119,9 +119,19 @@ test('landmarks retain openings and have visible detailed palace rear elevations
       archPosition: window.londonScene.getObjectByName('Marble Arch').position.toArray(),
       shaftHeight: shaft.geometry.boundingBox.max.y - shaft.geometry.boundingBox.min.y,
       rearWindows: [
-        probe('Buckingham Palace', [.375, 1.3, -4], [0, 0, 1]),
+        probe('Buckingham Palace', [.375, 1.18, -4], [0, 0, 1]),
         probe('Kensington Palace', [.44, 1.2, -3], [0, 0, 1]),
       ],
+      palaceFacings: [
+        ['Kensington Palace', 'Kensington east entrance', [-18.188643, 0, -8.631879]],
+        ['Buckingham Palace', 'Buckingham balcony', [12.15, 0, -5.2]],
+      ].map(([name, featureName, target]) => {
+        const palace = window.londonScene.getObjectByName(name);
+        const feature = palace.getObjectByName(featureName);
+        const front = feature.getWorldPosition(palace.position.clone()).sub(palace.position).setY(0).normalize();
+        const direction = palace.position.clone().set(...target).sub(palace.position).setY(0).normalize();
+        return front.dot(direction);
+      }),
     };
   });
   expect(details.kensington).toEqual([null, null]);
@@ -134,6 +144,7 @@ test('landmarks retain openings and have visible detailed palace rear elevations
   expect(details.archPosition[2]).toBeCloseTo(-17.18);
   expect(details.shaftHeight).toBeGreaterThan(2);
   expect(details.rearWindows).toEqual(['Sash glazing', 'Sash glazing']);
+  for (const alignment of details.palaceFacings) expect(alignment).toBeGreaterThan(.9999);
 });
 
 test('new neighbouring houses, eastern skyline and right-wall cabinet are placed in the scene', async ({ page }) => {
@@ -160,6 +171,18 @@ test('new neighbouring houses, eastern skyline and right-wall cabinet are placed
     });
     return {
       houses: houses.children.map(house => house.position.toArray()),
+      houseParts: houses.children.map(house => house.children.map(part => ({
+        geometry: part.geometry.type, color: part.material.color.getHexString(),
+      }))),
+      cityColors: (() => {
+        const buildings = scene.children.find(object => object.isInstancedMesh && object.instanceColor);
+        return Array.from({ length: 7 }, (_, index) => {
+          const color = buildings.material.color.clone();
+          buildings.getColorAt(index, color);
+          return color.getHexString();
+        });
+      })(),
+      roofColor: scene.children.find(object => object.isInstancedMesh && object.material.color.getHexString() === '788086').material.color.getHexString(),
       cabinetPosition: cabinet.position.toArray(),
       cabinetFacing: vector(0, 0, 1).transformDirection(cabinet.matrixWorld).toArray(),
       boardScale: board.scale.toArray(),
@@ -169,8 +192,15 @@ test('new neighbouring houses, eastern skyline and right-wall cabinet are placed
       lattice: scene.getObjectByName('Gherkin diagrid').geometry.attributes.position.count,
     };
   });
-  expect(details.houses).toHaveLength(6);
-  for (const [x, , z] of details.houses) expect(Math.abs(x) > 6.5 || z > 5.5).toBe(true);
+  expect(details.houses).toHaveLength(9);
+  for (const [x, , z] of details.houses) expect(Math.abs(x) > 6.5 || Math.abs(z) > 5.5).toBe(true);
+  expect(details.houses.filter(([, , z]) => z < -5.5)).toHaveLength(3);
+  for (const parts of details.houseParts) {
+    expect(parts).toHaveLength(2);
+    expect(parts.every(part => part.geometry === 'BoxGeometry')).toBe(true);
+    expect(details.cityColors).toContain(parts[0].color);
+    expect(parts[1].color).toBe(details.roofColor);
+  }
   expect(details.cabinetPosition[0]).toBeGreaterThan(3);
   expect(details.cabinetPosition[2]).toBeLessThan(-7);
   expect(details.cabinetFacing[0]).toBeCloseTo(-1);
@@ -216,8 +246,85 @@ test('the entire garden square is five percent larger than the previous sixty-pe
   }
 });
 
+test('study has open rectangular windows, side wallpaper and no roof fragment', () => {
+  const root = new THREE.Group();
+  const { floor } = buildGardens(root, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true, cornwallGardens: true });
+  root.updateMatrixWorld(true);
+  const hits = new THREE.Raycaster(new THREE.Vector3(-.6, floor + 1.95, -11), new THREE.Vector3(0, 0, -1), 0, 3).intersectObject(root, true);
+  expect(hits.length).toBeGreaterThan(0);
+  expect(hits.every(hit => hit.object.name === 'Study window glazing' && hit.object.material.transparent && hit.object.material.opacity < .2)).toBe(true);
+  const walls = [];
+  let roofFragment = false;
+  root.traverse(mesh => {
+    if (!mesh.isInstancedMesh) return;
+    for (let index = 0; index < mesh.count; index++) {
+      const matrix = new THREE.Matrix4();
+      mesh.getMatrixAt(index, matrix);
+      const size = new THREE.Vector3().setFromMatrixScale(matrix);
+      const position = new THREE.Vector3().setFromMatrixPosition(matrix);
+      const close = (a, b) => Math.abs(a - b) < .001;
+      if (close(size.x, 3.04) && close(size.y, .57) && close(size.z, 2.06)) roofFragment = true;
+      if (mesh.material.color.getHexString() === '314c3b' && close(size.x, .3) && close(size.y, 2.7)) walls.push({ position, size });
+    }
+  });
+  expect(roofFragment).toBe(false);
+  expect(walls).toHaveLength(2);
+  walls.map(wall => wall.position.x).sort((a, b) => a - b).forEach((value, index) => expect(value).toBeCloseTo(index ? 3.57 : -3.57));
+  expect(walls.every(wall => wall.size.z > 5.7)).toBe(true);
+});
+
+test('living study has plants, a roaming black cat and a compact rug, hidden during close-ups', async ({ page }, testInfo) => {
+  await observeScene(page);
+  await page.goto('/london-os.html#office');
+  await settled(page, 'office');
+  const canvas = page.locator('#london-view');
+  const details = await page.evaluate(() => {
+    const scene = window.londonScene;
+    const plants = scene.getObjectByName('Study plants');
+    const paws = [];
+    scene.getObjectByName('Black study cat').traverse(object => {
+      if (object.name === 'paw') paws.push(object.children[0].material.color.getHexString());
+    });
+    const roof = scene.getObjectByName('Design Museum saddle roof').geometry;
+    roof.computeBoundingBox();
+    return {
+      plants: plants.children.map(plant => plant.name),
+      visible: plants.visible,
+      paws,
+      rug: scene.getObjectByName('Study rug').scale.toArray(),
+      museum: scene.getObjectByName('Design Museum').position.toArray(),
+      roof: [roof.boundingBox.min.y, roof.boundingBox.max.y],
+      finite: Array.from(roof.attributes.position.array).every(Number.isFinite),
+    };
+  });
+  expect(details.plants).toEqual(['Monstera', 'Bamboo']);
+  expect(details.visible).toBe(true);
+  expect(details.paws).toEqual(['202325', '202325', '202325', '202325']);
+  expect(details.rug[0]).toBeLessThan(4.5);
+  expect(details.rug[2]).toBeLessThan(3);
+  expect(details.museum).toEqual([-29.5, 0, -1.5]);
+  expect(details.finite).toBe(true);
+  expect(details.roof[1] - details.roof[0]).toBeGreaterThan(1.3);
+  const initialPosition = await canvas.getAttribute('data-cat-position');
+  await expect(canvas).toHaveAttribute('data-cat-action', 'walk', { timeout: 10000 });
+  await expect(canvas).not.toHaveAttribute('data-cat-position', initialPosition);
+  await page.screenshot({ path: testInfo.outputPath('london-living-study.png') });
+  await page.locator('[data-destination="cv"]').click();
+  await settled(page, 'cv');
+  expect(await page.evaluate(() => ['Study plants', 'Study cat routine'].map(name => window.londonScene.getObjectByName(name).visible))).toEqual([false, false]);
+  const frozen = await canvas.getAttribute('data-cat-position');
+  await page.waitForTimeout(150);
+  await expect(canvas).toHaveAttribute('data-cat-position', frozen);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/london-os.html#office');
+  await settled(page, 'office');
+  const still = await canvas.getAttribute('data-cat-position');
+  await page.waitForTimeout(150);
+  await expect(canvas).toHaveAttribute('data-cat-position', still);
+});
+
 test('continuous world supports mouse/touch orbit, office exploration and all portfolio objects offline', async ({ page, isMobile, baseURL }, testInfo) => {
-  test.setTimeout(45000);
+  test.setTimeout(60000);
   const errors = [], external = [];
   await observeScene(page);
   page.on('pageerror', error => errors.push(error.message));
@@ -239,6 +346,12 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
   const masthead = await page.locator('.masthead').boundingBox();
   expect(masthead.x).toBe(0);
   expect(masthead.width).toBe(frame.width);
+  await expect(page.locator('.masthead')).not.toContainText('South Kensington, London');
+  await expect(page.locator('.intro')).not.toContainText('Come up to the study');
+  const titleCard = await page.locator('.intro').boundingBox();
+  expect(titleCard.width).toBeGreaterThan(isMobile ? 220 : 280);
+  expect(titleCard.x + titleCard.width).toBeLessThanOrEqual(frame.width);
+  expect(await page.locator('#world-title').evaluate(title => parseFloat(getComputedStyle(title).fontSize))).toBeLessThanOrEqual(42);
   expect(await page.evaluate(() => {
     const passes = [], straps = [];
     window.londonScene.traverse(object => {
@@ -252,9 +365,9 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     const direction = landmark.position.clone().set(axis === 'x' ? 1 : 0, 0, axis === 'z' ? 1 : 0).transformDirection(landmark.matrixWorld);
     return (Math.atan2(direction.x, -direction.z) * 180 / Math.PI + 360) % 360;
   }));
-  expect(bearings[0]).toBeCloseTo(72.5, 0);
+  expect(bearings[0]).toBeCloseTo(95.5, 0);
   expect(bearings[1]).toBeCloseTo(161.3, 0);
-  expect(bearings[2]).toBeCloseTo(55.3, 0);
+  expect(bearings[2]).toBeCloseTo(57.3, 0);
   expect(bearings[3]).toBeCloseTo(5.8, 0);
   expect(bearings[4]).toBeCloseTo(166.3, 0);
   if (isMobile) {
@@ -304,11 +417,40 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     await page.locator('#office-targets').getByRole('button', { name: label, exact: true }).click();
     await settled(page, id);
     await expect(canvas).not.toHaveAttribute('data-orbit', before);
-    await expect(page.locator('#object-card')).toContainText(expected);
-    await expect(page.locator('#object-card')).toBeFocused();
+    if (id === 'cv') {
+      const input = page.getByRole('textbox', { name: 'Terminal command' });
+      await expect(input).toBeFocused();
+      await input.fill('cat education.txt');
+      await input.press('Enter');
+    }
+    await expect(page.locator(id === 'cv' ? '#computer-terminal' : '#object-card')).toContainText(expected);
+    if (id !== 'cv') await expect(page.locator('#object-card')).toBeFocused();
+    if (id !== 'cv') await expect(page.locator('#object-card > #back')).toBeVisible();
+    if (id === 'projects' || id === 'reading') {
+      expect(await page.evaluate(() => {
+        const scene = window.londonScene, root = scene.getObjectByName('London garden square');
+        const point = scene.position.clone().set(-2.5, 9.76 + (location.hash === '#projects' ? .48 : 1.55), -11.2);
+        return root.localToWorld(point).distanceTo(window.londonCamera.position);
+      })).toBeLessThan(isMobile ? .8 : .7);
+    }
     await expect(page).toHaveURL(new RegExp(`/london-os.html#${id}$`));
     if (id === 'cv') await page.screenshot({ path: testInfo.outputPath(`london-computer-${testInfo.project.name}.png`) });
+    if (id === 'hobbies' && !isMobile) {
+      expect((await page.locator('#object-card').boundingBox()).height).toBeLessThan(frame.height * .6);
+    }
+    if (id === 'reading') {
+      await expect(page.locator('#object-card [data-reading-shelf]')).toHaveCount(0);
+      const books = await page.locator('#portfolio-source #reading li').evaluateAll(items => items.map(item => ({
+        title: item.querySelector('a').textContent, author: item.querySelector('span').textContent,
+      })));
+      for (const book of books) {
+        await expect(page.locator('#object-card .item-list').getByRole('button', { name: `${book.title} ${book.author}`, exact: true })).toBeVisible();
+      }
+      await page.screenshot({ path: testInfo.outputPath(`london-reading-${testInfo.project.name}.png`) });
+    }
     if (id === 'work') {
+      await expect(page.locator('#object-location')).toBeHidden();
+      await expect(page.locator('#place-name')).toHaveText('Pinboard');
       const framing = await page.evaluate(() => {
         const board = window.londonScene.getObjectByName('Work history pinboard');
         const center = board.localToWorld(board.position.clone().set(0, 0, 0));
@@ -334,7 +476,7 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
       })).toEqual([true, true, true, true, true]);
       await page.screenshot({ path: testInfo.outputPath(`london-work-history-${testInfo.project.name}.png`) });
     }
-    await page.getByRole('button', { name: 'Return to the study', exact: true }).click();
+    await page.getByRole('button', { name: id === 'cv' ? 'Back to study' : 'Return to the study', exact: true }).click();
     await settled(page, 'office');
   }
   await page.getByRole('button', { name: 'Back to London', exact: true }).click();
@@ -344,6 +486,76 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
   await settled(page, 'city');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(external).toEqual([]); expect(errors).toEqual([]);
+});
+
+test('computer commands run directly on the monitor with a cursor, education, PDF actions and exit', async ({ page }) => {
+  await observeScene(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/london-os.html#cv');
+  await settled(page, 'cv');
+  const input = page.getByRole('textbox', { name: 'Terminal command' });
+  const help = page.getByRole('button', { name: 'Backslash for commands' });
+  const menu = page.locator('#terminal-commands');
+  await expect(page.locator('#object-card')).toBeHidden();
+  await expect(page.locator('#office-targets')).toBeHidden();
+  await expect(page.locator('.study-screen-layer #computer-terminal')).toBeVisible();
+  await expect(page.locator('#computer-terminal form')).toContainText('justinattw$');
+  await expect(input).toBeFocused();
+  await expect(page.locator('.terminal-caret')).toBeVisible();
+  const screen = await page.locator('#computer-terminal').boundingBox();
+  const canvas = await page.locator('#london-view').boundingBox();
+  expect(screen.width).toBeGreaterThan(canvas.width < 760 ? 250 : 500);
+  expect(screen.x).toBeGreaterThan(0);
+  expect(screen.x + screen.width).toBeLessThan(canvas.width);
+  const projected = await page.evaluate(() => {
+    const monitor = window.londonScene.getObjectByName('Study computer display');
+    const corners = [-1, 1].flatMap(x => [-1, 1].map(y => {
+      const point = monitor.localToWorld(monitor.position.clone().set(x * .42, y * .275, 0)).project(window.londonCamera);
+      return { x: (point.x + 1) * innerWidth / 2, y: (1 - point.y) * innerHeight / 2 };
+    }));
+    return {
+      x: Math.min(...corners.map(p => p.x)), y: Math.min(...corners.map(p => p.y)),
+      right: Math.max(...corners.map(p => p.x)), bottom: Math.max(...corners.map(p => p.y)),
+    };
+  });
+  expect(Math.abs(screen.x - projected.x)).toBeLessThan(2);
+  expect(Math.abs(screen.y - projected.y)).toBeLessThan(2);
+  expect(Math.abs(screen.x + screen.width - projected.right)).toBeLessThan(2);
+  expect(Math.abs(screen.y + screen.height - projected.bottom)).toBeLessThan(2);
+  await help.click();
+  await expect(menu.getByRole('button')).toHaveText(['download resume.pdf', 'open resume.pdf', 'cat education.txt', 'exit']);
+  await menu.getByRole('button', { name: 'cat education.txt', exact: true }).click();
+  await expect(page.locator('#computer-terminal pre')).toContainText('University of Oxford');
+  await expect(input).toBeFocused();
+  await expect(help).toBeVisible();
+  await input.press('\\');
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await settled(page, 'cv');
+  await expect(input).toBeFocused();
+  await input.fill('not-a-command');
+  await input.press('Enter');
+  await expect(page.locator('#computer-terminal pre')).toContainText('Unknown command');
+  await help.click();
+  const downloadEvent = page.waitForEvent('download');
+  await menu.getByRole('button', { name: 'download resume.pdf', exact: true }).click();
+  expect((await downloadEvent).suggestedFilename()).toBe('Justin-Wong-Resume.pdf');
+  await page.context().route('**/justin-wong-resume.pdf', route => route.fulfill({ contentType: 'text/html', body: 'PDF destination' }));
+  await help.click();
+  const popupEvent = page.waitForEvent('popup');
+  await menu.getByRole('button', { name: 'open resume.pdf', exact: true }).click();
+  const popup = await popupEvent;
+  await expect(popup).toHaveURL(/\/justin-wong-resume.pdf$/);
+  await popup.close();
+  await input.fill('exit');
+  await input.press('Enter');
+  await settled(page, 'office');
+  await expect(input).toBeHidden();
+  await page.locator('#office-targets').getByRole('button', { name: 'CV', exact: true }).click();
+  await settled(page, 'cv');
+  await input.press('\\');
+  await expect(menu).toBeVisible();
 });
 
 test('room controls coalesce into Explore and reopen according to actual zoom distance', async ({ page, isMobile }) => {
@@ -368,7 +580,9 @@ test('room controls coalesce into Explore and reopen according to actual zoom di
   await expect(markers.first()).toBeVisible();
   await page.locator('#office-targets').getByRole('button', { name: 'CV', exact: true }).click();
   await settled(page, 'cv');
-  for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  for (let i = 0; i < 24 && await page.locator('#london-view').getAttribute('data-view') !== 'city'; i++) {
+    await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  }
   await settled(page, 'city');
   await expect(page.locator('#object-card')).toBeHidden();
   await expect(explore).toBeVisible();
@@ -394,6 +608,9 @@ test('books and passes stay in the world, deep links restore and reduced motion 
   await page.locator('#object-card .item-list').getByRole('button', { name: 'GitHub', exact: true }).click();
   await expect(page.locator('#london-view')).toHaveAttribute('data-item', 'job-0');
   await expect(page.locator('#object-card')).toContainText('Notifications');
+  await expect(page.locator('#object-card').getByRole('heading', { name: 'GitHub', exact: true })).toHaveCount(1);
+  await expect(page.locator('#object-card > #back')).toHaveText('Back to passes');
+  await expect(page.locator('#object-card .access-card h3')).toHaveCount(0);
   await page.goBack();
   await settled(page, 'work');
   await expect(page.locator('#london-view')).toHaveAttribute('data-item', '');

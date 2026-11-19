@@ -1,4 +1,4 @@
-export function createTerminal({ onCV, onExit }) {
+export function createTerminal({ onCV, onExit, onEducation, container = document.querySelector('.room-wrap'), commandNames, keepHelpVisible = false }) {
   const element = document.createElement('section');
   element.id = 'computer-terminal';
   element.setAttribute('aria-label', 'Study terminal');
@@ -79,7 +79,9 @@ export function createTerminal({ onCV, onExit }) {
     clear: () => '',
     exit: () => { onExit(); return null; },
   };
-  for (const command of Object.keys(commands)) {
+  if (onEducation) commands['cat education.txt'] = () => { onEducation(); return null; };
+  for (const command of commandNames ?? Object.keys(commands)) {
+    if (!Object.hasOwn(commands, command)) throw new Error(`Unknown terminal menu command: ${command}`);
     const option = document.createElement('button');
     option.type = 'button';
     option.textContent = command;
@@ -92,7 +94,7 @@ export function createTerminal({ onCV, onExit }) {
   }
   help.addEventListener('click', () => showMenu(menu.hidden));
   window.addEventListener('keydown', event => {
-    if (element.hidden) return;
+    if (element.hidden || !element.isConnected) return;
     if (event.key === '\\' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !event.isComposing) {
       event.preventDefault();
       showMenu(menu.hidden);
@@ -103,8 +105,9 @@ export function createTerminal({ onCV, onExit }) {
       event.preventDefault();
       event.stopPropagation();
       showMenu(false);
+      input.focus();
     }
-  });
+  }, { capture: true });
   menu.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -120,7 +123,7 @@ export function createTerminal({ onCV, onExit }) {
     updateCaret();
     showMenu(false);
     if (!command) return;
-    help.hidden = true;
+    help.hidden = !keepHelpVisible;
     const result = Object.hasOwn(commands, command)
       ? commands[command]()
       : `Unknown command: ${command}\nPress \\ for supported commands.`;
@@ -128,7 +131,7 @@ export function createTerminal({ onCV, onExit }) {
   });
   form.append(prompt, commandLine, submit);
   element.append(help, output, form, menu);
-  document.querySelector('.room-wrap').append(element);
+  container.append(element);
   return {
     element,
     focus: () => input.focus({ preventScroll: true }),

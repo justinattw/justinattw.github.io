@@ -269,6 +269,24 @@ function showContent() {
       content.prepend(list);
     }
   }
+  if (view === 'work') {
+    const profiles = document.createElement('nav');
+    profiles.className = 'profile-links';
+    profiles.setAttribute('aria-label', 'Professional profiles');
+    for (const [label, url] of [
+      ['LinkedIn', 'https://www.linkedin.com/in/justinattw'],
+      ['GitHub', 'https://github.com/justinattw'],
+    ]) {
+      const link = document.createElement('a');
+      link.textContent = label;
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.insertAdjacentHTML('beforeend', icon('arrow'));
+      profiles.append(link);
+    }
+    content.append(profiles);
+  }
   card.scrollTop = 0;
 }
 
@@ -408,30 +426,23 @@ function start() {
   }
   function positionMarkers() {
     const distance = camera.position.distanceTo(model.roomCenter);
-    const amount = 1 - THREE.MathUtils.smoothstep(distance, 16, 24);
+    const inStudy = distance <= 16;
     const focused = view !== 'city' && view !== 'office';
-    explore.hidden = amount === 1 || focused;
-    targets.hidden = amount === 0 || focused;
-    explore.style.opacity = 1 - amount;
-    explore.style.pointerEvents = amount < .5 ? 'auto' : 'none';
-    explore.tabIndex = amount < .5 ? 0 : -1;
+    explore.hidden = inStudy || focused;
+    targets.hidden = !inStudy || focused;
     if (!explore.hidden) place(explore, model.marker);
     if (!targets.hidden && office) {
       const placements = [];
       for (const element of targets.children) {
         const id = element.dataset.destination;
         const dx = id === 'projects' || id === 'reading' ? -35 : id === 'work' || id === 'hobbies' ? 45 : 0;
-        element.style.opacity = amount;
-        element.style.pointerEvents = amount >= .5 ? 'auto' : 'none';
-        element.tabIndex = amount >= .5 ? 0 : -1;
-        const point = model.marker.clone().lerp(office.anchors[id], amount);
-        placements.push(place(element, point, dx * amount, id === 'reading' ? -15 * amount : 0));
+        placements.push(place(element, office.anchors[id], dx, id === 'reading' ? -15 : 0));
       }
       for (let pass = 0; pass < 8; pass++) {
         for (let i = 0; i < placements.length; i++) for (let j = i + 1; j < placements.length; j++) {
           const a = placements[i], b = placements[j];
           if (Math.abs(a.x - b.x) < (a.width + b.width) / 2 + 8 && Math.abs(a.y - b.y) < (a.height + b.height) / 2 + 10) {
-            const shift = (a.y < b.y ? -14 : 14) * amount;
+            const shift = a.y < b.y ? -14 : 14;
             a.y += shift; b.y -= shift;
           }
         }
@@ -464,7 +475,7 @@ function start() {
             : view === 'hobbies' ? mobile ? 2.1 : 1.4
               : mobile ? 3.5 : 2.2;
     const direction = view === 'city' ? homeDirection
-      : view === 'cv' ? new THREE.Vector3(.025, .025, 1).normalize()
+      : view === 'cv' ? office.monitor.getWorldDirection(new THREE.Vector3())
         : view === 'work' ? new THREE.Vector3(-.18, .08, 1).normalize()
         : view === 'hobbies' ? new THREE.Vector3(-1, .22, .45).normalize()
           : new THREE.Vector3(.04, selected ? .18 : view === 'office' ? .48 : .22, 1).normalize();

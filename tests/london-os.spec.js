@@ -123,8 +123,8 @@ test('landmarks retain openings and have visible detailed palace rear elevations
         probe('Kensington Palace', [.44, 1.2, -3], [0, 0, 1]),
       ],
       palaceFacings: [
-        ['Kensington Palace', 'Kensington east entrance', 72.5],
-        ['Buckingham Palace', 'Buckingham balcony', 55.3],
+        ['Kensington Palace', 'Kensington east entrance', 252.5],
+        ['Buckingham Palace', 'Buckingham balcony', 235.3],
       ].map(([name, featureName, bearing]) => {
         const palace = window.londonScene.getObjectByName(name);
         const feature = palace.getObjectByName(featureName);
@@ -304,8 +304,8 @@ test('living study has plants, a roaming black cat and a compact rug, hidden dur
   expect(details.paws).toEqual(['202325', '202325', '202325', '202325']);
   expect(details.rug[0]).toBeLessThan(4.5);
   expect(details.rug[2]).toBeLessThan(3);
-  expect(details.museum[0]).toBeCloseTo(-28.9);
-  expect(details.museum[2]).toBeCloseTo(-1.15);
+  expect(details.museum[0]).toBeCloseTo(-33);
+  expect(details.museum[2]).toBeCloseTo(-3);
   expect(details.museumScale).toBe(.45);
   expect(details.finite).toBe(true);
   expect(details.roof[1] - details.roof[0]).toBeGreaterThan(1.3);
@@ -369,9 +369,9 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     const direction = landmark.position.clone().set(axis === 'x' ? 1 : 0, 0, axis === 'z' ? 1 : 0).transformDirection(landmark.matrixWorld);
     return (Math.atan2(direction.x, -direction.z) * 180 / Math.PI + 360) % 360;
   }));
-  expect(bearings[0]).toBeCloseTo(72.5, 0);
+  expect(bearings[0]).toBeCloseTo(252.5, 0);
   expect(bearings[1]).toBeCloseTo(161.3, 0);
-  expect(bearings[2]).toBeCloseTo(55.3, 0);
+  expect(bearings[2]).toBeCloseTo(235.3, 0);
   expect(bearings[3]).toBeCloseTo(5.8, 0);
   expect(bearings[4]).toBeCloseTo(166.3, 0);
   if (isMobile) {
@@ -432,6 +432,8 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     await expect(page.locator('.view-bar > #back')).toBeVisible();
     const backBounds = await page.locator('#back').boundingBox();
     const placeBounds = await page.locator('#place-name').boundingBox();
+    expect(backBounds.height).toBe(placeBounds.height);
+    expect(backBounds.y).toBe(placeBounds.y);
     expect(placeBounds.x - backBounds.x - backBounds.width).toBeCloseTo(10, 0);
     expect(placeBounds.x + placeBounds.width).toBeCloseTo(frame.width - (isMobile ? 18 : 36), 0);
     if (id === 'projects' || id === 'reading') {
@@ -457,6 +459,14 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
       await page.screenshot({ path: testInfo.outputPath(`london-reading-${testInfo.project.name}.png`) });
     }
     if (id === 'work') {
+      const profiles = page.getByRole('navigation', { name: 'Professional profiles' });
+      await expect(profiles.getByRole('link', { name: 'LinkedIn' })).toHaveAttribute('href', 'https://www.linkedin.com/in/justinattw');
+      await expect(profiles.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://github.com/justinattw');
+      for (const link of await profiles.getByRole('link').all()) {
+        await expect(link).toBeVisible();
+        await expect(link).toHaveAttribute('target', '_blank');
+        await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      }
       await expect(page.locator('#object-location')).toBeHidden();
       await expect(page.locator('#place-name')).toHaveText('Pinboard');
       const framing = await page.evaluate(() => {
@@ -508,6 +518,17 @@ test('computer commands run directly on the monitor with a cursor, education, PD
   await expect(page.locator('#office-targets')).toBeHidden();
   await expect(page.locator('.study-screen-layer #computer-terminal')).toBeVisible();
   await expect(page.locator('#computer-terminal form')).toContainText('justinattw$');
+  const laptop = await page.evaluate(() => {
+    const root = window.londonScene.getObjectByName('Study MacBook');
+    const base = root.getObjectByName('MacBook aluminium base');
+    const lid = root.getObjectByName('MacBook lid');
+    return {
+      thinBase: base.scale.y < base.scale.x * .05,
+      trackpad: !!root.getObjectByName('MacBook trackpad'),
+      hingedScreen: lid.getObjectByName('Study computer display')?.parent === lid && lid.rotation.x < 0,
+    };
+  });
+  expect(laptop).toEqual({ thinBase: true, trackpad: true, hingedScreen: true });
   await expect(input).toBeFocused();
   await expect(page.locator('.terminal-caret')).toBeVisible();
   const screen = await page.locator('#computer-terminal').boundingBox();
@@ -595,18 +616,25 @@ test('computer commands run directly on the monitor with a cursor, education, PD
   await expect(menu).toBeVisible();
 });
 
-test('room controls coalesce into Explore and reopen according to actual zoom distance', async ({ page, isMobile }) => {
+test('room controls switch directly between Explore and five buttons without a paused fan-out', async ({ page, isMobile }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/london-os.html#office');
   await settled(page, 'office');
   const explore = page.getByRole('button', { name: 'Explore', exact: true });
   const markers = page.locator('#office-targets button');
   await expect(explore).toBeHidden();
-  for (let i = 0; i < (isMobile ? 2 : 4); i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  for (let i = 0; i < (isMobile ? 2 : 4); i++) {
+    await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+    const visible = await page.evaluate(() => ({
+      explore: !document.querySelector('#explore').hidden,
+      objects: !document.querySelector('#office-targets').hidden,
+      opacities: [...document.querySelectorAll('#explore, #office-targets button')].map(button => getComputedStyle(button).opacity),
+    }));
+    expect(visible.explore).not.toBe(visible.objects);
+    expect(visible.opacities.every(opacity => opacity === '1')).toBe(true);
+  }
   await expect(explore).toBeVisible();
-  const opacity = await markers.first().evaluate(element => Number(getComputedStyle(element).opacity));
-  expect(opacity).toBeGreaterThan(0);
-  expect(opacity).toBeLessThan(1);
+  await expect(page.locator('#office-targets')).toBeHidden();
   for (let i = 0; i < 6; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
   await settled(page, 'city');
   await expect(page.locator('#office-targets')).toBeHidden();

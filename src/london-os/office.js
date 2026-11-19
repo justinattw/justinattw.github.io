@@ -49,9 +49,32 @@ export function buildOffice(root, floor, data, schedule) {
   box(.1, floor + .165, -9.45, 4, .015, 2.7, '#bdbdb5');
   box(.35, floor + .88, -10.15, 2.9, .15, 1.3, ash);
   for (const x of [-.85, 1.55]) for (const z of [-10.65, -9.65]) box(x, floor + .47, z, .1, .8, .1, metal);
-  box(.35, floor + 1.47, -10.45, .96, .72, .12, metal);
-  box(.35, floor + 1.04, -10.45, .08, .3, .09, metal);
-  box(.35, floor + .98, -10.45, .48, .035, .28, metal);
+  const laptop = new THREE.Group();
+  laptop.name = 'Study MacBook';
+  laptop.position.set(.35, floor + .98, -10.05);
+  root.add(laptop);
+  const aluminium = '#bfc6c9', bezel = '#202629';
+  const base = box(0, 0, 0, 1.04, .045, .75, aluminium, laptop);
+  base.name = 'MacBook aluminium base';
+  base.userData.destination = 'cv';
+  box(0, -.008, .36, 1, .018, .035, '#9ca5aa', laptop);
+  box(0, .026, -.09, .83, .009, .3, bezel, laptop);
+  for (let row = 0; row < 5; row++) for (let col = 0; col < 12; col++) {
+    box((col - 5.5) * .065, .033, -.205 + row * .05, .054, .008, .037, '#41494d', laptop);
+  }
+  box(0, .033, .045, .32, .009, .035, '#41494d', laptop);
+  box(0, .026, .22, .39, .005, .19, '#939da2', laptop).name = 'MacBook trackpad';
+  box(0, .03, .22, .37, .004, .17, aluminium, laptop);
+  for (const side of [-1, 1]) for (let slot = 0; slot < 15; slot++) {
+    box(side * .465, .025, -.23 + slot * .02, .035, .003, .005, '#79858b', laptop);
+  }
+  const lid = new THREE.Group();
+  lid.name = 'MacBook lid';
+  lid.position.set(0, .025, -.34);
+  lid.rotation.x = -.16;
+  laptop.add(lid);
+  box(0, .33, 0, .99, .66, .035, aluminium, lid);
+  box(0, .33, .023, .92, .6, .012, bezel, lid);
   const display = surface((ctx, w, h) => {
     ctx.fillStyle = '#242b2d'; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#ecece4'; ctx.font = '32px monospace';
@@ -59,11 +82,16 @@ export function buildOffice(root, floor, data, schedule) {
     ctx.font = '23px monospace'; ctx.fillStyle = '#aebbc1';
     ctx.fillText('justinattw$ _', 28, 270);
   }, 512, 320);
-  const screen = object(new THREE.PlaneGeometry(.84, .55), .35, floor + 1.47, -10.382, new THREE.MeshBasicMaterial({ map: display, toneMapped: false }));
+  const screen = object(new THREE.PlaneGeometry(.84, .55), 0, .33, .033, new THREE.MeshBasicMaterial({ map: display, toneMapped: false }), lid);
   screen.name = 'Study computer display';
   screen.userData.destination = 'cv';
-  box(.3, floor + .98, -9.83, .84, .045, .28, chalk);
-  box(.98, floor + .98, -9.86, .16, .04, .23, metal);
+  const wordmark = surface((ctx, w, h) => {
+    ctx.fillStyle = bezel; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#bfc6c9'; ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('MacBook', w / 2, 29);
+  }, 256, 40);
+  object(new THREE.PlaneGeometry(.18, .028), 0, .027, .033, new THREE.MeshBasicMaterial({ map: wordmark, toneMapped: false }), lid);
+  sphere(0, .618, .033, .008, .008, .003, '#647b80', lid);
   cylinder(1.37, floor + 1, -10.32, .14, .04, metal);
   cylinder(1.37, floor + 1.3, -10.32, .025, .58, metal);
   cylinder(1.37, floor + 1.65, -10.32, .22, .18, chalk, root, .14);
@@ -171,13 +199,13 @@ export function buildOffice(root, floor, data, schedule) {
   cylinder(-1.6, floor + .37, -7.05, .18, .1, chalk, bowl, .20);
   cylinder(-1.6, floor + .423, -7.05, .17, .006, '#7dabb9', bowl);
   const points = {
-    cv: new THREE.Vector3(.35, floor + 1.47, -10.35),
     projects: new THREE.Vector3(-2.5, floor + .48, -11.2),
     reading: new THREE.Vector3(-2.5, floor + 1.55, -11.2),
     work: new THREE.Vector3(2.72, floor + 1.45, -12.05),
   };
   root.updateMatrixWorld(true);
   const anchors = Object.fromEntries(Object.entries(points).map(([id, p]) => [id, root.localToWorld(p)]));
+  anchors.cv = screen.getWorldPosition(new THREE.Vector3());
   anchors.hobbies = cupboard.localToWorld(new THREE.Vector3(0, 2.7, .65));
   return {
     anchors, physical, hobbies, cat, monitor: screen,

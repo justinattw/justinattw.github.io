@@ -63,7 +63,7 @@ export function buildLondon(scene) {
   const city = [], roofs = [], trees = [], trunks = [], towers = [];
   const cityPalette = ['#c5c6bf', '#dbb9a2', '#b8c5c9', '#d2c8b1', '#c5b6b0', '#b8c4ac', '#d7cfbf'];
   const house = project(525850, 178700);
-  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528997, 179614], [525844, 180027], [527400, 177550], [530017, 180419], [527852, 180968], [532950, 180150], [533100, 180900], [533350, 181250], [537550, 180300], [525110, 179365]].map(p => project(...p));
+  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528997, 179614], [525844, 180027], [527400, 177550], [530017, 180419], [527852, 180968], [532950, 180150], [533100, 180900], [533350, 181250], [537550, 180300], [524700, 179550]].map(p => project(...p));
   const nearLandmark = (x, z) => landmarkPoints.some((p, index) => Math.hypot(p.x - x, p.z - z) < (index === 11 ? 10 : index === 3 ? 6 : 3.3));
   for (let x = -145; x < 165; x += 3.5) {
     for (let z = -130; z < 125; z += 3.5) {
@@ -208,8 +208,8 @@ export function buildLondon(scene) {
     }
   }
   function palace() {
-    // Local +z is the frontage; grid bearings run clockwise from north (-z).
-    const group = landmark('Buckingham Palace', 3, 180 - 55.3);
+    // Apply the requested half-turn to the preceding visual orientation.
+    const group = landmark('Buckingham Palace', 3, 360 - 55.3);
     const stone = '#e5ddcb', trim = '#f2e9d8', window = '#6e858b', roof = '#747c7c';
     box('#c6bdab', 0, .07, .7, 5.6, .12, 4.7, group);
     box('#b7afa0', 0, .15, -.1, 3.35, .08, 1.8, group).name = 'Buckingham courtyard';
@@ -284,7 +284,7 @@ export function buildLondon(scene) {
     }
   }
   function kensingtonPalace() {
-    const group = landmark('Kensington Palace', 4, 180 - 72.5);
+    const group = landmark('Kensington Palace', 4, 360 - 72.5);
     box('#aa6e57', 0, .75, 0, 3.3, 1.5, 1.2, group);
     for (const x of [-1.15, 1.15]) for (const z of [-.35, .35]) {
       box('#cba78c', x, 1.94, z, .18, .62, .2, group);

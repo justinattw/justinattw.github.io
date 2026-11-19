@@ -38,10 +38,10 @@ body:not([data-view="city"]) .intro { display: none; }
 .marker-icon svg { width: 14px; height: 14px; }
 .office-marker { font-weight: 500; }
 .office-marker svg { width: 17px; height: 17px; }
-.view-bar { position: absolute; top: 107px; left: 36px; right: 36px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; z-index: 4; pointer-events: none; }
+.view-bar { position: absolute; top: 107px; left: 36px; right: 36px; display: flex; align-items: stretch; justify-content: flex-end; gap: 10px; z-index: 4; pointer-events: none; }
 .view-bar button { display: inline-flex; gap: 9px; align-items: center; pointer-events: auto; background: #efefe7; color: #303735; border-color: #d5d9d0; font-size: 12px; }
 .view-bar button:hover { background: #dce1dc; }
-#place-name { background: #292d2de8; border: 1px solid #7d85807a; padding: 10px 15px; border-radius: 4px; font-size: 12px; }
+#place-name { display: inline-flex; align-items: center; background: #292d2de8; border: 1px solid #7d85807a; padding: 10px 15px; border-radius: 4px; font-size: 12px; }
 .icon-button { min-width: 44px; padding: 10px; display: inline-grid; place-items: center; font-size: 21px; line-height: 1; }
 .paper-panel { position: absolute; z-index: 6; background: #f1f1eb; color: #303735; border: 1px solid #ccd1c9; border-radius: 5px; box-shadow: 0 18px 55px #00000030; padding: 23px; }
 .panel-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
@@ -79,6 +79,9 @@ body:not([data-view="city"]) .intro { display: none; }
 .item-list button { display: flex; align-items: center; justify-content: space-between; text-align: left; gap: 14px; width: 100%; padding: 12px; color: #303b33; font-size: 13px; }
 .item-list button svg { width: 15px; height: 15px; }
 .item-list button small { display: block; color: #58665d; font-size: 12px; margin-top: 3px; }
+.profile-links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #cbd4c8; }
+.profile-links a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.profile-links svg { width: 14px; height: 14px; transform: rotate(-45deg); }
 .study-screen-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 #computer-terminal { position: absolute; width: 640px; height: 420px; display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #242b2d; color: #eeeee8; font: 20px/1.45 "Courier New", monospace; pointer-events: auto; backface-visibility: hidden; }
 #computer-terminal pre { margin: 0; min-height: 0; flex: 1; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }

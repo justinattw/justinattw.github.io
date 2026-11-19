@@ -107,7 +107,6 @@ function navigate(destination, { item = null, history = true, animate = true, fo
   creditsToggle.setAttribute('aria-expanded', 'false');
   document.body.dataset.view = destination;
   card.hidden = !chapters.some(chapter => chapter.id === destination) || (ready && destination === 'cv');
-  (card.hidden ? bar : card).prepend(back);
   bar.hidden = destination === 'city';
   document.querySelector('#back-label').textContent = item
     ? item.kind === 'job' ? 'Back to passes' : 'Back to shelf'
@@ -153,6 +152,64 @@ function appendContent(element, omitHeading = false) {
   content.append(clone);
 }
 
+function initializeTerminal() {
+  const education = [...source.querySelectorAll('#cv .education')].map(article => [
+    article.querySelector('h3').textContent,
+    [...article.querySelector('p').childNodes].map(node => node.nodeName === 'BR' ? '\n' : node.textContent).join(''),
+    ...[...article.querySelectorAll('div > *')].map(part => part.textContent),
+  ].join('\n')).join('\n\n');
+  // A real WebGL texture preserves the live screen at a distance and respects scene occlusion.
+  const display = document.createElement('canvas');
+  display.width = 640; display.height = 420;
+  const ctx = display.getContext('2d');
+  const texture = new THREE.CanvasTexture(display);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  office.monitor.material.map.dispose();
+  office.monitor.material.map = texture;
+  office.monitor.material.needsUpdate = true;
+  terminal = createTerminal({
+    container: terminalRenderer.domElement,
+    onCV: () => terminal.showCV(education),
+    onEducation: () => terminal.showCV(education),
+    onExit: () => navigate('office'),
+    onLinkedIn: () => window.open('https://www.linkedin.com/in/justinattw', '_blank', 'noopener,noreferrer'),
+    commandNames: ['download resume.pdf', 'open resume.pdf', 'cat education.txt', 'open linkedin', 'exit'],
+    keepHelpVisible: true,
+    keepInputFocused: true,
+    onStateChange: state => {
+      ctx.fillStyle = '#242b2d';
+      ctx.fillRect(0, 0, display.width, display.height);
+      ctx.font = '20px "Courier New", monospace';
+      ctx.fillStyle = '#eeeee8';
+      ctx.fillText('\\ for commands', 16, 40);
+      const lines = state.output.split('\n').flatMap(line => line.match(/.{1,49}/g) || ['']);
+      lines.slice(-9).forEach((line, i) => ctx.fillText(line, 16, 90 + i * 29));
+      if (state.commands.length) {
+        ctx.fillStyle = '#242b2d';
+        ctx.fillRect(16, 70, 608, 280);
+        state.commands.forEach((command, i) => {
+          const active = i === state.selectedCommand;
+          ctx.fillStyle = active ? '#eeeee8' : '#242b2d';
+          ctx.fillRect(24, 78 + i * 52, 592, 46);
+          ctx.fillStyle = active ? '#242b2d' : '#eeeee8';
+          ctx.fillText(command, 36, 108 + i * 52);
+        });
+      }
+      ctx.fillStyle = '#eeeee8';
+      ctx.fillText(`justinattw$ ${state.input} ▌`, 16, 392);
+      texture.needsUpdate = true;
+      schedule();
+    },
+  });
+  terminalSurface = new CSS3DObject(terminal.element);
+  terminalSurface.position.copy(office.monitor.getWorldPosition(new THREE.Vector3()));
+  terminalSurface.quaternion.copy(office.monitor.getWorldQuaternion(new THREE.Quaternion()));
+  const scale = office.monitor.getWorldScale(new THREE.Vector3());
+  terminalSurface.scale.set(scale.x * .84 / 640, scale.y * .55 / 420, 1);
+  terminalScene.add(terminalSurface);
+  terminal.showCV('');
+}
+
 function showContent() {
   const chapter = chapters.find(chapter => chapter.id === view);
   document.querySelector('#object-title').textContent = selected?.name || chapter.label;
@@ -161,28 +218,6 @@ function showContent() {
   objectLocation.hidden = view === 'work';
   content.replaceChildren();
   if (view === 'cv' && ready) {
-    if (!terminal) {
-      const education = [...source.querySelectorAll('#cv .education')].map(article => [
-        article.querySelector('h3').textContent,
-        [...article.querySelector('p').childNodes].map(node => node.nodeName === 'BR' ? '\n' : node.textContent).join(''),
-        ...[...article.querySelectorAll('div > *')].map(part => part.textContent),
-      ].join('\n')).join('\n\n');
-      terminal = createTerminal({
-        container: terminalRenderer.domElement,
-        onCV: () => terminal.showCV(education),
-        onEducation: () => terminal.showCV(education),
-        onExit: () => navigate('office'),
-        commandNames: ['download resume.pdf', 'open resume.pdf', 'cat education.txt', 'exit'],
-        keepHelpVisible: true,
-      });
-      terminalSurface = new CSS3DObject(terminal.element);
-      terminalSurface.position.copy(office.monitor.getWorldPosition(new THREE.Vector3()));
-      terminalSurface.quaternion.copy(office.monitor.getWorldQuaternion(new THREE.Quaternion()));
-      const scale = office.monitor.getWorldScale(new THREE.Vector3());
-      terminalSurface.scale.set(scale.x * .84 / 640, scale.y * .55 / 420, 1);
-      terminalScene.add(terminalSurface);
-      terminal.showCV('');
-    }
     terminal.element.hidden = false;
     pendingFocus = true;
     return;
@@ -291,6 +326,7 @@ function start() {
   reducedMotion.addEventListener('change', schedule);
   document.addEventListener('visibilitychange', schedule);
   office = model.ensureOffice(data, schedule);
+  initializeTerminal();
 
   function render(now) {
     frame = 0;

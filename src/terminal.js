@@ -1,4 +1,4 @@
-export function createTerminal({ onCV, onExit, onEducation, container = document.querySelector('.room-wrap'), commandNames, keepHelpVisible = false }) {
+export function createTerminal({ onCV, onExit, onEducation, onLinkedIn, onStateChange = () => {}, container = document.querySelector('.room-wrap'), commandNames, keepHelpVisible = false, keepInputFocused = false }) {
   const element = document.createElement('section');
   element.id = 'computer-terminal';
   element.setAttribute('aria-label', 'Study terminal');
@@ -22,6 +22,7 @@ export function createTerminal({ onCV, onExit, onEducation, container = document
   caret.setAttribute('aria-hidden', 'true');
   function updateCaret() {
     caret.style.left = `calc(${input.selectionStart ?? input.value.length}ch - ${input.scrollLeft}px)`;
+    notifyState();
   }
   for (const event of ['input', 'click', 'keyup', 'scroll', 'focus']) input.addEventListener(event, updateCaret);
   document.addEventListener('selectionchange', () => {
@@ -45,9 +46,26 @@ export function createTerminal({ onCV, onExit, onEducation, container = document
   menu.id = 'terminal-commands';
   menu.setAttribute('aria-label', 'Supported commands');
   menu.hidden = true;
+  const options = [];
+  let selectedCommand = 0;
+  function notifyState() {
+    onStateChange({
+      output: output.textContent, input: input.value,
+      commands: menu.hidden ? [] : options.map(option => option.textContent),
+      selectedCommand,
+    });
+  }
+  function selectCommand(index) {
+    selectedCommand = (index + options.length) % options.length;
+    options.forEach((option, i) => option.setAttribute('aria-current', String(i === selectedCommand)));
+    options[selectedCommand]?.scrollIntoView({ block: 'nearest' });
+    notifyState();
+  }
   function showMenu(show) {
     menu.hidden = !show;
     help.setAttribute('aria-expanded', String(show));
+    if (show) selectCommand(0);
+    else notifyState();
   }
   const commands = {
     'download resume.pdf': () => {
@@ -80,6 +98,7 @@ export function createTerminal({ onCV, onExit, onEducation, container = document
     exit: () => { onExit(); return null; },
   };
   if (onEducation) commands['cat education.txt'] = () => { onEducation(); return null; };
+  if (onLinkedIn) commands['open linkedin'] = () => { onLinkedIn(); return 'Opening LinkedIn in a new tab.'; };
   for (const command of commandNames ?? Object.keys(commands)) {
     if (!Object.hasOwn(commands, command)) throw new Error(`Unknown terminal menu command: ${command}`);
     const option = document.createElement('button');
@@ -90,16 +109,29 @@ export function createTerminal({ onCV, onExit, onEducation, container = document
       form.requestSubmit();
       if (command !== 'exit') input.focus({ preventScroll: true });
     });
+    options.push(option);
     menu.append(option);
   }
-  help.addEventListener('click', () => showMenu(menu.hidden));
+  help.addEventListener('click', () => {
+    showMenu(menu.hidden);
+    if (keepInputFocused) input.focus({ preventScroll: true });
+  });
   window.addEventListener('keydown', event => {
     if (element.hidden || !element.isConnected) return;
     if (event.key === '\\' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !event.isComposing) {
       event.preventDefault();
       showMenu(menu.hidden);
-      if (!menu.hidden) menu.querySelector('button').focus();
-      else input.focus();
+      if (keepInputFocused || menu.hidden) input.focus({ preventScroll: true });
+      else options[0]?.focus({ preventScroll: true });
+    }
+    if (keepInputFocused && !menu.hidden && document.activeElement === input) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        selectCommand(selectedCommand + (event.key === 'ArrowDown' ? 1 : -1));
+      } else if (event.key === 'Enter' && !event.isComposing) {
+        event.preventDefault();
+        options[selectedCommand]?.click();
+      }
     }
     if (event.key === 'Escape' && !menu.hidden) {
       event.preventDefault();
@@ -128,6 +160,7 @@ export function createTerminal({ onCV, onExit, onEducation, container = document
       ? commands[command]()
       : `Unknown command: ${command}\nPress \\ for supported commands.`;
     if (result !== null) output.textContent = command === 'clear' ? '' : `justinattw$ ${command}\n${result}`;
+    notifyState();
   });
   form.append(prompt, commandLine, submit);
   element.append(help, output, form, menu);

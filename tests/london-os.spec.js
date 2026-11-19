@@ -123,13 +123,14 @@ test('landmarks retain openings and have visible detailed palace rear elevations
         probe('Kensington Palace', [.44, 1.2, -3], [0, 0, 1]),
       ],
       palaceFacings: [
-        ['Kensington Palace', 'Kensington east entrance', [-18.188643, 0, -8.631879]],
-        ['Buckingham Palace', 'Buckingham balcony', [12.15, 0, -5.2]],
-      ].map(([name, featureName, target]) => {
+        ['Kensington Palace', 'Kensington east entrance', 72.5],
+        ['Buckingham Palace', 'Buckingham balcony', 55.3],
+      ].map(([name, featureName, bearing]) => {
         const palace = window.londonScene.getObjectByName(name);
         const feature = palace.getObjectByName(featureName);
         const front = feature.getWorldPosition(palace.position.clone()).sub(palace.position).setY(0).normalize();
-        const direction = palace.position.clone().set(...target).sub(palace.position).setY(0).normalize();
+        const angle = bearing * Math.PI / 180;
+        const direction = palace.position.clone().set(Math.sin(angle), 0, -Math.cos(angle));
         return front.dot(direction);
       }),
     };
@@ -293,6 +294,7 @@ test('living study has plants, a roaming black cat and a compact rug, hidden dur
       paws,
       rug: scene.getObjectByName('Study rug').scale.toArray(),
       museum: scene.getObjectByName('Design Museum').position.toArray(),
+      museumScale: scene.getObjectByName('Design Museum').scale.x,
       roof: [roof.boundingBox.min.y, roof.boundingBox.max.y],
       finite: Array.from(roof.attributes.position.array).every(Number.isFinite),
     };
@@ -302,7 +304,9 @@ test('living study has plants, a roaming black cat and a compact rug, hidden dur
   expect(details.paws).toEqual(['202325', '202325', '202325', '202325']);
   expect(details.rug[0]).toBeLessThan(4.5);
   expect(details.rug[2]).toBeLessThan(3);
-  expect(details.museum).toEqual([-29.5, 0, -1.5]);
+  expect(details.museum[0]).toBeCloseTo(-28.9);
+  expect(details.museum[2]).toBeCloseTo(-1.15);
+  expect(details.museumScale).toBe(.45);
   expect(details.finite).toBe(true);
   expect(details.roof[1] - details.roof[0]).toBeGreaterThan(1.3);
   const initialPosition = await canvas.getAttribute('data-cat-position');
@@ -365,9 +369,9 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     const direction = landmark.position.clone().set(axis === 'x' ? 1 : 0, 0, axis === 'z' ? 1 : 0).transformDirection(landmark.matrixWorld);
     return (Math.atan2(direction.x, -direction.z) * 180 / Math.PI + 360) % 360;
   }));
-  expect(bearings[0]).toBeCloseTo(95.5, 0);
+  expect(bearings[0]).toBeCloseTo(72.5, 0);
   expect(bearings[1]).toBeCloseTo(161.3, 0);
-  expect(bearings[2]).toBeCloseTo(57.3, 0);
+  expect(bearings[2]).toBeCloseTo(55.3, 0);
   expect(bearings[3]).toBeCloseTo(5.8, 0);
   expect(bearings[4]).toBeCloseTo(166.3, 0);
   if (isMobile) {
@@ -425,7 +429,11 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     }
     await expect(page.locator(id === 'cv' ? '#computer-terminal' : '#object-card')).toContainText(expected);
     if (id !== 'cv') await expect(page.locator('#object-card')).toBeFocused();
-    if (id !== 'cv') await expect(page.locator('#object-card > #back')).toBeVisible();
+    await expect(page.locator('.view-bar > #back')).toBeVisible();
+    const backBounds = await page.locator('#back').boundingBox();
+    const placeBounds = await page.locator('#place-name').boundingBox();
+    expect(placeBounds.x - backBounds.x - backBounds.width).toBeCloseTo(10, 0);
+    expect(placeBounds.x + placeBounds.width).toBeCloseTo(frame.width - (isMobile ? 18 : 36), 0);
     if (id === 'projects' || id === 'reading') {
       expect(await page.evaluate(() => {
         const scene = window.londonScene, root = scene.getObjectByName('London garden square');
@@ -523,13 +531,27 @@ test('computer commands run directly on the monitor with a cursor, education, PD
   expect(Math.abs(screen.x + screen.width - projected.right)).toBeLessThan(2);
   expect(Math.abs(screen.y + screen.height - projected.bottom)).toBeLessThan(2);
   await help.click();
-  await expect(menu.getByRole('button')).toHaveText(['download resume.pdf', 'open resume.pdf', 'cat education.txt', 'exit']);
-  await menu.getByRole('button', { name: 'cat education.txt', exact: true }).click();
+  await expect(menu.getByRole('button')).toHaveText(['download resume.pdf', 'open resume.pdf', 'cat education.txt', 'open linkedin', 'exit']);
+  await expect(input).toBeFocused();
+  await input.press('x');
+  await expect(input).toHaveValue('x');
+  await expect(menu).toBeVisible();
+  const menuBounds = await menu.boundingBox();
+  const lastCommand = await menu.getByRole('button', { name: 'exit', exact: true }).boundingBox();
+  expect(lastCommand.y + lastCommand.height).toBeLessThanOrEqual(menuBounds.y + menuBounds.height);
+  await input.press('ArrowDown');
+  await input.press('ArrowDown');
+  await expect(menu.getByRole('button', { name: 'cat education.txt', exact: true })).toHaveAttribute('aria-current', 'true');
+  await expect(input).toBeFocused();
+  await input.press('Enter');
   await expect(page.locator('#computer-terminal pre')).toContainText('University of Oxford');
   await expect(input).toBeFocused();
   await expect(help).toBeVisible();
   await input.press('\\');
   await expect(menu).toBeVisible();
+  await expect(input).toBeFocused();
+  await input.press('ArrowUp');
+  await expect(menu.getByRole('button', { name: 'exit', exact: true })).toHaveAttribute('aria-current', 'true');
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
   await settled(page, 'cv');
@@ -548,10 +570,25 @@ test('computer commands run directly on the monitor with a cursor, education, PD
   const popup = await popupEvent;
   await expect(popup).toHaveURL(/\/justin-wong-resume.pdf$/);
   await popup.close();
+  await page.context().route('https://www.linkedin.com/in/justinattw', route => route.fulfill({ contentType: 'text/html', body: 'LinkedIn profile' }));
+  await input.press('\\');
+  const linkedinEvent = page.waitForEvent('popup');
+  await menu.getByRole('button', { name: 'open linkedin', exact: true }).click();
+  const linkedin = await linkedinEvent;
+  await expect(linkedin).toHaveURL('https://www.linkedin.com/in/justinattw');
+  await linkedin.close();
+  await expect(page.locator('#computer-terminal pre')).toContainText('Opening LinkedIn');
+  const screenState = () => page.evaluate(() => window.londonScene.getObjectByName('Study computer display').material.map.image.toDataURL());
+  const linkedinScreen = await screenState();
+  await input.fill('cat education.txt');
+  await input.press('Enter');
+  const educationScreen = await screenState();
+  expect(educationScreen).not.toBe(linkedinScreen);
   await input.fill('exit');
   await input.press('Enter');
   await settled(page, 'office');
   await expect(input).toBeHidden();
+  expect(await screenState()).toBe(educationScreen);
   await page.locator('#office-targets').getByRole('button', { name: 'CV', exact: true }).click();
   await settled(page, 'cv');
   await input.press('\\');
@@ -609,7 +646,7 @@ test('books and passes stay in the world, deep links restore and reduced motion 
   await expect(page.locator('#london-view')).toHaveAttribute('data-item', 'job-0');
   await expect(page.locator('#object-card')).toContainText('Notifications');
   await expect(page.locator('#object-card').getByRole('heading', { name: 'GitHub', exact: true })).toHaveCount(1);
-  await expect(page.locator('#object-card > #back')).toHaveText('Back to passes');
+  await expect(page.locator('.view-bar > #back')).toHaveText('Back to passes');
   await expect(page.locator('#object-card .access-card h3')).toHaveCount(0);
   await page.goBack();
   await settled(page, 'work');

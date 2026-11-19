@@ -63,7 +63,7 @@ export function buildLondon(scene) {
   const city = [], roofs = [], trees = [], trunks = [], towers = [];
   const cityPalette = ['#c5c6bf', '#dbb9a2', '#b8c5c9', '#d2c8b1', '#c5b6b0', '#b8c4ac', '#d7cfbf'];
   const house = project(525850, 178700);
-  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528950, 179600], [525800, 180150], [527400, 177550], [530017, 180419], [527852, 180968], [532950, 180150], [533100, 180900], [533350, 181250], [537550, 180300], [525050, 179400]].map(p => project(...p));
+  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528997, 179614], [525844, 180027], [527400, 177550], [530017, 180419], [527852, 180968], [532950, 180150], [533100, 180900], [533350, 181250], [537550, 180300], [525110, 179365]].map(p => project(...p));
   const nearLandmark = (x, z) => landmarkPoints.some((p, index) => Math.hypot(p.x - x, p.z - z) < (index === 11 ? 10 : index === 3 ? 6 : 3.3));
   for (let x = -145; x < 165; x += 3.5) {
     for (let z = -130; z < 125; z += 3.5) {
@@ -208,9 +208,8 @@ export function buildLondon(scene) {
     }
   }
   function palace() {
-    // Aim the balcony and forecourt towards the Mall from the illustrative palace location.
-    const group = landmark('Buckingham Palace', 3);
-    group.lookAt(project(529215, 179770));
+    // Local +z is the frontage; grid bearings run clockwise from north (-z).
+    const group = landmark('Buckingham Palace', 3, 180 - 55.3);
     const stone = '#e5ddcb', trim = '#f2e9d8', window = '#6e858b', roof = '#747c7c';
     box('#c6bdab', 0, .07, .7, 5.6, .12, 4.7, group);
     box('#b7afa0', 0, .15, -.1, 3.35, .08, 1.8, group).name = 'Buckingham courtyard';
@@ -285,9 +284,7 @@ export function buildLondon(scene) {
     }
   }
   function kensingtonPalace() {
-    // Aim the east entrance at the bundled Round Pond, not past it.
-    const group = landmark('Kensington Palace', 4);
-    group.lookAt(project(526181.1, 180113.2));
+    const group = landmark('Kensington Palace', 4, 180 - 72.5);
     box('#aa6e57', 0, .75, 0, 3.3, 1.5, 1.2, group);
     for (const x of [-1.15, 1.15]) for (const z of [-.35, .35]) {
       box('#cba78c', x, 1.94, z, .18, .62, .2, group);
@@ -323,6 +320,7 @@ export function buildLondon(scene) {
   }
   function designMuseum() {
     const group = landmark('Design Museum', 12, 8);
+    group.scale.setScalar(.45);
     box('#c7bca6', 0, .20, 0, 3.55, .4, 3.05, group);
     const heightAt = (x, z) => 1.55 + .7 * (x / 2) * (z / 1.8);
     const vertices = [], indices = [], divisions = 16;

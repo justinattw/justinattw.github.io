@@ -4,7 +4,7 @@ Route: `/`. A continuous Three.js London world and top-floor study, with a charc
 
 The scene reuses the shared garden-square geometry with flat-ground, uniform-roofline, pinboard-wall, Cornwall Gardens, palette and furnishing settings. The entire London garden-square vignette, including its terraces, room and furnishings, is at 63% of its original scale: the earlier 20% and 25% reductions followed by a 5% increase. The Cornwall Gardens model has white façades, two buildings on each east/west side, and no benches or fountain. Its garden, paths, fences and side paving are shortened by one 4.44-unit building bay, keeping the rear boundary fixed; trees and lamps follow the shorter layout. Nine smaller neighbouring houses, including three behind the study, fill gaps outside the square using the same plain pastel blocks and flat grey roof caps as the rest of London, with no windows, doors, chimneys or trim. The square's interior and room approach remain open. Camera targets and object anchors follow the shared group transform.
 
-The default city view looks east from west of the study at approximately 21 degrees above the horizon, keeping the study centred while revealing the city beyond it. Returning to London restores this starting viewpoint. Study and object close-ups retain their own camera angles.
+The default city view starts 15 degrees south of west of the study and looks 15 degrees north of east at approximately 21 degrees above the horizon, keeping the study centred while revealing the city beyond it. Returning to London restores this starting viewpoint. Study and object close-ups retain their own camera angles.
 
 ## Geography and licence
 

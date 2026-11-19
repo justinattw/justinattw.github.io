@@ -64,7 +64,7 @@ async function observeScene(page) {
   });
 }
 
-test('city starts west of the study looking east at a shallow angle and restores that view on return', async ({ page }) => {
+test('city starts 15 degrees south of west looking northeast and restores that view on return', async ({ page }) => {
   await observeScene(page);
   await page.goto('/');
   await settled(page, 'city');
@@ -73,7 +73,8 @@ test('city starts west of the study looking east at a shallow angle and restores
     direction: window.londonCamera.getWorldDirection(window.londonCamera.position.clone()).toArray(),
   }));
   expect(initial.direction[0]).toBeGreaterThan(.9);
-  expect(initial.direction[2]).toBeCloseTo(0, 5);
+  const northOfEast = Math.atan2(-initial.direction[2], initial.direction[0]) * 180 / Math.PI;
+  expect(northOfEast).toBeCloseTo(15, 5);
   const incline = Math.asin(-initial.direction[1]) * 180 / Math.PI;
   expect(incline).toBeGreaterThan(15);
   expect(incline).toBeLessThan(25);

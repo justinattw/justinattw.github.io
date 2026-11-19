@@ -319,7 +319,7 @@ function start() {
   controls.maxDistance = 190;
   controls.rotateSpeed = .5;
   let frame = 0, motion, lost = false, previousTime = performance.now();
-  const homeAngle = THREE.MathUtils.degToRad(15);
+  const homeAngle = THREE.MathUtils.degToRad(30);
   const homeDirection = new THREE.Vector3(-Math.cos(homeAngle), .38, Math.sin(homeAngle)).normalize();
   schedule = () => { if (!frame && !lost) frame = requestAnimationFrame(render); };
   controls.addEventListener('change', schedule);

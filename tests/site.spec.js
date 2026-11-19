@@ -9,6 +9,8 @@ test('homepage is the only published HTML entrypoint and retains semantic portfo
   expect(readdirSync(dist).filter(file => file.endsWith('.html'))).toEqual(['index.html']);
   const html = readFileSync(new URL('index.html', dist), 'utf8');
   expect(html).toContain('id="london-view"');
+  expect(html).toContain('<title>Justin Wong · Portfolio</title>');
+  expect(html).toContain('class="brand-note">Portfolio</span>');
   for (const id of ['cv', 'projects', 'reading', 'work', 'hobbies']) expect(html).toContain(`id="${id}"`);
   expect(html).toContain('Momentum backtest');
   expect(html).not.toMatch(/(?:gardens|styles|london-os)\.html/);
@@ -18,6 +20,33 @@ async function settled(page, view) {
   const canvas = page.locator('#london-view');
   await expect(canvas).toHaveAttribute('data-view', view);
   await expect(canvas).toHaveAttribute('data-transition', 'false');
+}
+
+async function zoom(page, isMobile, inward) {
+  const canvas = page.locator('#london-view');
+  const before = await canvas.getAttribute('data-orbit');
+  const point = await canvas.evaluate(canvas => {
+    const { x, y, width, height } = canvas.getBoundingClientRect();
+    for (const [u, v] of [[.5, .8], [.5, .65], [.5, .5]]) {
+      const point = { x: x + width * u, y: y + height * v };
+      if ([-50, 0, 50].every(dx => document.elementFromPoint(point.x + dx, point.y) === canvas)) return point;
+    }
+    throw new Error('No unobstructed canvas area for a zoom gesture.');
+  });
+  if (isMobile) {
+    const cdp = await page.context().newCDPSession(page);
+    const touches = scale => [-1, 1].map((side, id) => ({ id, x: point.x + side * 40 * scale, y: point.y }));
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: touches(1) });
+    for (let step = 1; step <= 4; step++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches(1 + ((inward ? 1.25 : .8) - 1) * step / 4) });
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+  } else {
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.wheel(0, inward ? -435 : 435);
+  }
+  await expect(canvas).not.toHaveAttribute('data-orbit', before);
 }
 
 async function observeScene(page) {
@@ -75,6 +104,7 @@ test('Cornwall Gardens has white façades, two buildings per side and no garden 
       const matrix = new THREE.Matrix4();
       mesh.getMatrixAt(index, matrix);
       return {
+        geometry: mesh.geometry.type,
         color: mesh.material.color.getHexString(),
         position: new THREE.Vector3().setFromMatrixPosition(matrix),
         size: new THREE.Vector3().setFromMatrixScale(matrix),
@@ -102,6 +132,13 @@ test('Cornwall Gardens has white façades, two buildings per side and no garden 
   expect(seats(after)).toHaveLength(0);
   expect(before.some(part => part.color === '6e8885')).toBe(true);
   expect(after.some(part => ['6e8885', 'aaa38f', 'e2d9c4', 'cabcaa', 'f6edda'].includes(part.color))).toBe(false);
+  const crowns = after.filter(part => part.geometry === 'IcosahedronGeometry');
+  expect(crowns).toHaveLength(56);
+  expect(Math.max(...crowns.map(part => part.position.y + part.size.y / 2))).toBeCloseTo(2 * 4.6496, 4);
+  expect(Math.max(...crowns.map(part => part.size.x))).toBeCloseTo(2.862);
+  const trunks = after.filter(part => part.color === '67513f');
+  expect(trunks).toHaveLength(14);
+  expect(Math.max(...trunks.map(part => part.size.y))).toBeCloseTo(2 * 2.106);
 });
 
 test('landmarks retain openings and have visible detailed palace rear elevations', async ({ page }) => {
@@ -380,6 +417,8 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     await expect(link.locator('svg')).toBeVisible();
   }
   await expect(page.locator('footer')).not.toContainText('Scroll or pinch to zoom');
+  await expect(page.getByRole('button', { name: /^(Zoom in|Zoom out|Rotate left|Return to London)$/ })).toHaveCount(0);
+  expect(await explore.evaluate(button => getComputedStyle(button, '::after').content)).toBe('none');
   const footerGroups = await page.locator('footer > *').evaluateAll(elements => elements.map(element => {
     const { left, right, top, bottom } = element.getBoundingClientRect();
     return { left, right, top, bottom };
@@ -432,14 +471,10 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
   }
   await expect(canvas).not.toHaveAttribute('data-orbit', original);
   const rotated = await canvas.getAttribute('data-orbit');
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).focus();
-  await page.keyboard.press('Enter');
+  await zoom(page, isMobile, true);
   await expect(canvas).not.toHaveAttribute('data-orbit', rotated);
-  await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
-  await expect(canvas).toHaveAttribute('data-orbit', rotated);
-  await page.getByRole('button', { name: 'Rotate left', exact: true }).click();
-  await expect(canvas).not.toHaveAttribute('data-orbit', rotated);
-  await page.getByRole('button', { name: 'Return to London', exact: true }).click();
+  await zoom(page, isMobile, false);
+  await page.reload();
   await settled(page, 'city');
   await expect(canvas).toHaveAttribute('data-orbit', original);
   await page.screenshot({ path: testInfo.outputPath(`london-world-${testInfo.project.name}.png`) });
@@ -448,6 +483,7 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
   await expect(page.locator('#office-targets button').first()).toBeFocused();
   await expect(explore).toBeHidden();
   await expect(page.locator('#office-targets button')).toHaveCount(5);
+  expect(await page.locator('#office-targets button').evaluateAll(buttons => buttons.every(button => getComputedStyle(button, '::after').content === 'none'))).toBe(true);
   await page.screenshot({ path: testInfo.outputPath(`london-office-${testInfo.project.name}.png`) });
   for (const [id, label, expected] of [
     ['cv', 'CV', 'University of Oxford'],
@@ -459,6 +495,13 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     const before = await canvas.getAttribute('data-orbit');
     await page.locator('#office-targets').getByRole('button', { name: label, exact: true }).click();
     await settled(page, id);
+    if (isMobile) {
+      await expect(page.locator('.masthead')).toBeHidden();
+      await expect(page.locator('footer')).toBeHidden();
+    } else {
+      await expect(page.locator('.masthead')).toBeVisible();
+      await expect(page.locator('footer')).toBeVisible();
+    }
     await expect(page.locator('#place-name')).toHaveText({
       cv: 'Computer', projects: 'Project shelf', reading: 'Reading shelf', work: 'Pinboard', hobbies: 'Cabinet',
     }[id]);
@@ -531,6 +574,8 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     }
     await page.getByRole('button', { name: id === 'cv' ? 'Back to study' : 'Return to the study', exact: true }).click();
     await settled(page, 'office');
+    await expect(page.locator('.masthead')).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible();
   }
   await page.getByRole('button', { name: 'Back to London', exact: true }).click();
   await settled(page, 'city');
@@ -653,14 +698,15 @@ test('computer commands run directly on the monitor with a cursor, education, PD
 });
 
 test('room controls switch directly between Explore and five buttons without a paused fan-out', async ({ page, isMobile }) => {
+  test.setTimeout(60000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/#office');
   await settled(page, 'office');
   const explore = page.getByRole('button', { name: 'Explore', exact: true });
   const markers = page.locator('#office-targets button');
   await expect(explore).toBeHidden();
-  for (let i = 0; i < (isMobile ? 2 : 4); i++) {
-    await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  for (let i = 0; i < 12 && await explore.isHidden(); i++) {
+    await zoom(page, isMobile, false);
     const visible = await page.evaluate(() => ({
       explore: !document.querySelector('#explore').hidden,
       objects: !document.querySelector('#office-targets').hidden,
@@ -671,18 +717,18 @@ test('room controls switch directly between Explore and five buttons without a p
   }
   await expect(explore).toBeVisible();
   await expect(page.locator('#office-targets')).toBeHidden();
-  for (let i = 0; i < 6; i++) await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  for (let i = 0; i < 6; i++) await zoom(page, isMobile, false);
   await settled(page, 'city');
   await expect(page.locator('#office-targets')).toBeHidden();
   await expect(explore).toBeVisible();
-  for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  for (let i = 0; i < 12; i++) await zoom(page, isMobile, true);
   await settled(page, 'office');
   await expect(explore).toBeHidden();
   await expect(markers.first()).toBeVisible();
   await page.locator('#office-targets').getByRole('button', { name: 'CV', exact: true }).click();
   await settled(page, 'cv');
   for (let i = 0; i < 24 && await page.locator('#london-view').getAttribute('data-view') !== 'city'; i++) {
-    await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+    await zoom(page, isMobile, false);
   }
   await settled(page, 'city');
   await expect(page.locator('#object-card')).toBeHidden();
@@ -703,6 +749,8 @@ test('books and passes stay in the world, deep links restore and reduced motion 
   await page.getByRole('button', { name: 'Back to shelf', exact: true }).click();
   await settled(page, 'projects');
   await expect(page.locator('#london-view')).toHaveAttribute('data-item', '');
+  await page.getByRole('button', { name: 'Back to study', exact: true }).click();
+  await settled(page, 'office');
   await page.getByRole('button', { name: 'View contents' }).click();
   await page.locator('#contents-list').getByRole('button', { name: /Work/ }).click();
   await settled(page, 'work');
@@ -746,7 +794,7 @@ test('without JavaScript the established portfolio remains available', async ({ 
   } finally { await context.close(); }
 });
 
-test('footer profile links and world controls fit a narrow phone', async ({ page }) => {
+test('footer profile links fit a narrow phone', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
@@ -762,4 +810,74 @@ test('footer profile links and world controls fit a narrow phone', async ({ page
   }
   await expect(page.locator('footer').getByRole('link', { name: 'LinkedIn' })).toBeVisible();
   await expect(page.locator('footer').getByRole('link', { name: 'GitHub' })).toBeVisible();
+});
+
+test('object close-ups reclaim mobile bar space and restore navigation on resize and Back', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#office');
+  await settled(page, 'office');
+  await page.locator('#office-targets').getByRole('button', { name: 'Work history', exact: true }).click();
+  await settled(page, 'work');
+  await expect(page.locator('.masthead')).toBeHidden();
+  await expect(page.locator('footer')).toBeHidden();
+  await expect(page.locator('#back')).toBeVisible();
+  const bar = await page.locator('.view-bar').boundingBox();
+  const card = await page.locator('#object-card').boundingBox();
+  expect(bar.y).toBeLessThanOrEqual(24);
+  expect(844 - card.y - card.height).toBeLessThanOrEqual(24);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(page.locator('.masthead')).toBeVisible();
+  await expect(page.locator('footer')).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.masthead')).toBeHidden();
+  await expect(page.locator('footer')).toBeHidden();
+  await page.goBack();
+  await settled(page, 'office');
+  await expect(page.locator('.masthead')).toBeVisible();
+  await expect(page.locator('footer')).toBeVisible();
+  await page.goForward();
+  await settled(page, 'work');
+  await expect(page.locator('.masthead')).toBeHidden();
+  await expect(page.locator('footer')).toBeHidden();
+  await page.getByRole('button', { name: 'Back to study', exact: true }).click();
+  await settled(page, 'office');
+  await expect(page.locator('.masthead')).toBeVisible();
+  await expect(page.locator('footer')).toBeVisible();
+});
+
+test('Explore fits the actual room walls to small-screen widths and refits after resize', async ({ page }) => {
+  await observeScene(page);
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await settled(page, 'city');
+  await page.getByRole('button', { name: 'Explore', exact: true }).click();
+  await settled(page, 'office');
+  for (const [width, height] of [[320, 740], [390, 844], [760, 1024]]) {
+    await page.setViewportSize({ width, height });
+    await expect(page.locator('#london-view')).toHaveAttribute('data-room-center', `${(width / 2).toFixed(2)},${(height / 2).toFixed(2)}`);
+    const framing = await page.evaluate(() => {
+      const room = window.londonScene.getObjectByName('London garden square');
+      const walls = room.children.find(mesh => mesh.isInstancedMesh && mesh.material.color.getHexString() === '314c3b');
+      const projected = [];
+      for (let index = 0; index < walls.count; index++) {
+        const instance = walls.matrixWorld.clone();
+        walls.getMatrixAt(index, instance);
+        const transform = walls.matrixWorld.clone().multiply(instance);
+        for (const x of [-.5, .5]) for (const y of [-.5, .5]) for (const z of [-.5, .5]) {
+          projected.push(room.position.clone().set(x, y, z).applyMatrix4(transform).project(window.londonCamera));
+        }
+      }
+      return {
+        left: Math.min(...projected.map(point => point.x + 1)) * innerWidth / 2,
+        right: Math.max(...projected.map(point => point.x + 1)) * innerWidth / 2,
+      };
+    });
+    expect(framing.left).toBeGreaterThanOrEqual(0);
+    expect(framing.right).toBeLessThanOrEqual(width);
+    expect(framing.right - framing.left).toBeGreaterThanOrEqual(width * .88);
+    await expect(page.locator('.masthead')).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible();
+  }
 });

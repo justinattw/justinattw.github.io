@@ -279,7 +279,6 @@ function unavailable(error) {
   focusView = undefined;
   if (controls) controls.enabled = false;
   explore.hidden = targets.hidden = true;
-  document.querySelector('.orbit-controls').hidden = true;
   status.textContent = 'The 3D world could not render. Reload with WebGL enabled, or use View contents to read the portfolio.';
   status.hidden = false;
 }
@@ -447,8 +446,8 @@ function start() {
     const target = selected
       ? selected.root.parent.localToWorld(selected.stage.clone())
       : view === 'city' || view === 'office' ? model.roomCenter.clone() : office.anchors[view].clone();
-    const radius = view === 'city' ? mobile ? 83 : 62
-      : view === 'office' ? mobile ? 13 : 7.8
+    let radius = view === 'city' ? mobile ? 83 : 62
+      : view === 'office' ? 7.8
         : selected ? mobile ? 3 : 1.8
           : view === 'cv' ? mobile ? .65 : .38
             : view === 'projects' ? mobile ? .62 : .46
@@ -461,6 +460,19 @@ function start() {
         : view === 'work' ? new THREE.Vector3(-.18, .08, 1).normalize()
         : view === 'hobbies' ? new THREE.Vector3(-1, .22, .45).normalize()
           : new THREE.Vector3(.04, selected ? .18 : view === 'office' ? .48 : .22, 1).normalize();
+    if (mobile && view === 'office') {
+      const right = new THREE.Vector3().crossVectors(camera.up, direction).normalize();
+      const halfWidth = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect * .98;
+      radius = 0;
+      for (const x of [model.roomBounds.min.x, model.roomBounds.max.x]) {
+        for (const y of [model.roomBounds.min.y, model.roomBounds.max.y]) {
+          for (const z of [model.roomBounds.min.z, model.roomBounds.max.z]) {
+            const offset = new THREE.Vector3(x, y, z).sub(target);
+            radius = Math.max(radius, offset.dot(direction) + Math.abs(offset.dot(right)) / halfWidth);
+          }
+        }
+      }
+    }
     const to = direction.clone().multiplyScalar(radius).add(target);
     frameCard();
     if (animate && !reducedMotion.matches) {
@@ -481,16 +493,6 @@ function start() {
     terminalRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
     focusView(false);
   }
-  document.querySelector('.orbit-controls').addEventListener('click', event => {
-    const action = event.target.closest('button')?.dataset.action;
-    if (!action || motion || lost) return;
-    if (action === 'reset') return navigate('city');
-    const offset = camera.position.clone().sub(controls.target);
-    if (action === 'left') offset.applyAxisAngle(camera.up, -Math.PI / 8);
-    else offset.multiplyScalar(action === 'in' ? .8 : 1.25).clampLength(controls.minDistance, controls.maxDistance);
-    camera.position.copy(controls.target).add(offset);
-    controls.update(); schedule();
-  });
   let pointerStart;
   canvas.addEventListener('pointerdown', event => { pointerStart = { x: event.clientX, y: event.clientY }; });
   canvas.addEventListener('pointerup', event => {
@@ -530,6 +532,5 @@ function start() {
   }).observe(card);
   renderer.shadowMap.needsUpdate = true;
   status.hidden = true;
-  document.querySelector('.orbit-controls').hidden = false;
   schedule();
 }

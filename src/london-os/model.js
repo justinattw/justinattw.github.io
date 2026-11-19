@@ -118,6 +118,7 @@ export function buildLondon(scene) {
   const desk = neighbourhood.localToWorld(studio.desk.clone());
   const marker = neighbourhood.localToWorld(studio.marker.clone());
   const roomCenter = neighbourhood.localToWorld(new THREE.Vector3(0, studio.floor + 1.1, -9.6));
+  const roomBounds = studio.roomBounds.clone().applyMatrix4(neighbourhood.matrixWorld);
   let office;
 
   // Original, deliberately toy-like silhouettes at approximate BNG landmark locations.
@@ -549,7 +550,7 @@ export function buildLondon(scene) {
   }
   neighbouringHouses(); hall(); westminster(); eye(); palace(); kensingtonPalace(); albertBridge(); nelsonsColumn(); marbleArch(); citySkyline(); canaryWharf(); designMuseum();
   return {
-    desk, marker, roomCenter, house, featureCount: areas.length, neighbourhood,
+    desk, marker, roomCenter, roomBounds, house, featureCount: areas.length, neighbourhood,
     ensureOffice(data, schedule) {
       if (!office) office = buildOffice(neighbourhood, studio.floor, data, schedule);
       return office;

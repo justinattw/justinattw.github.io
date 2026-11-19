@@ -39,8 +39,6 @@ const paths = {
   back: '<path d="m12 5-7 7 7 7M5 12h15"/>',
   close: '<path d="m6 6 12 12M6 18 18 6"/>',
   menu: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
-  home: '<path d="m3 10 9-8 9 8v11h-7v-7h-4v7H3V10Z"/>',
-  rotate: '<path d="M3 10a9 9 0 1 1 2 8M3 3v7h7"/>',
 };
 
 export function icon(name) {

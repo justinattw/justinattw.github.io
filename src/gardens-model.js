@@ -140,11 +140,12 @@ export function buildGardens(scene, { uniformRoofline = false, flatGround = fals
     }
   }
   function tree(x, z, s) {
-    column('#67513f', x, .97 * s, z, .24 * s, 1.95 * s, .24 * s);
+    const heightScale = 2;
+    column('#67513f', x, .97 * s * heightScale, z, .24 * s, 1.95 * s * heightScale, .24 * s);
     for (const [dx, dy, dz, size, color] of [
       [0, 2.45, 0, 2.65, '#506a42'], [-.57, 2.15, .22, 1.8, '#5e7949'],
       [.63, 2.24, .29, 1.8, '#6d8250'], [.04, 3.22, -.26, 1.8, '#718550'],
-    ]) shape('crown', color, x + dx * s, .20 + dy * s, z + dz * s, size * s, size * s, size * s);
+    ]) shape('crown', color, x + dx * s, (.20 + dy * s) * heightScale, z + dz * s, size * s, size * s * heightScale, size * s);
   }
 
   terrace(x, z, width, depth, height, 0, true);
@@ -242,6 +243,10 @@ export function buildGardens(scene, { uniformRoofline = false, flatGround = fals
   return {
     desk: new THREE.Vector3(.47, floor + 1.22, z - .83),
     marker: new THREE.Vector3(.47, floor + 3.40, z - .83),
+    roomBounds: new THREE.Box3(
+      new THREE.Vector3(x - width / 2, floor, z - depth / 2),
+      new THREE.Vector3(x + width / 2, floor + 2.83, z + depth / 2),
+    ),
     floor,
   };
 }

@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- THESIS: An orbitable London specimen, not a basemap or a portfolio portal.
+OWN-WORLD: Forest-green surround, chalk city, blue tidal water, brass controls.
+STORY: Explore genuine OS park and river outlines; discover an enlarged open-roof studio.
+FIRST VIEWPORT: The miniature fills the stage; title above, orbit and studio controls below.
+FORM: Brief-pinned architectural diorama, extending the existing gardens visual world. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#202e2a">
+    <meta name="description" content="An orbitable London miniature with real Ordnance Survey park and Thames outlines, and an illustrative South Kensington workspace.">
+    <title>London in miniature · Ordnance Survey edition</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/src/london-os/style.css">
+    <script type="module" src="/src/london-os/main.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>London, in miniature.</h1>
+        <p>Ordnance Survey edition<br><span>A little geography. A little imagination.</span></p>
+      </header>
+      <section class="stage" aria-label="Interactive London miniature">
+        <canvas id="london-view" role="img" aria-label="Orbitable London model: real OS Thames and park outlines, original landmark silhouettes and an enlarged South Kensington terrace with an open top-floor workspace."></canvas>
+        <p id="status" role="status">Assembling London...</p>
+        <noscript><p class="no-script">Enable JavaScript and WebGL to orbit the miniature. Its parks and river use bundled Ordnance Survey open data.</p></noscript>
+        <div class="map-note" aria-hidden="true"><span class="swatch water"></span> Thames <span class="swatch park"></span> Open greenspace</div>
+        <span class="edition" aria-hidden="true">TQ / LONDON</span>
+      </section>
+      <div class="controls" hidden>
+        <div class="orbit" role="group" aria-label="Orbit controls">
+          <button type="button" data-action="left" aria-label="Rotate left">&#8630;</button>
+          <button type="button" data-action="right" aria-label="Rotate right">&#8631;</button>
+          <button type="button" data-action="out" aria-label="Zoom out">&#8722;</button>
+          <button type="button" data-action="in" aria-label="Zoom in">+</button>
+          <button type="button" data-action="reset">Whole city</button>
+        </div>
+        <p>Drag to orbit <span aria-hidden="true">/</span> Scroll or pinch to zoom</p>
+        <button type="button" class="workspace" data-action="workspace">Find the top-floor studio <span aria-hidden="true">&#8599;</span></button>
+      </div>
+      <footer>
+        <p>Real outlines. Imagined architecture. <span>Compressed London, not a navigation map.</span><br>Contains Ordnance Survey data &copy; Crown copyright and database right 2026.</p>
+        <details>
+          <summary>About the geography &amp; credits</summary>
+          <div class="credits">
+            <p>Park boundaries and names: OS Open Greenspace. Thames: OS OpenMap Local TidalWater. British National Grid (EPSG:27700), clipped and simplified offline to 5 metres. All data is bundled; this view makes no external requests.</p>
+            <p>Contains Ordnance Survey data &copy; Crown copyright and database right 2026. Reused under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>. Source editions downloaded 18 November 2026.</p>
+            <p>TidalWater can leave gaps beneath bridges. Buildings, trees, heights and landmark silhouettes are illustrative, not OS building data. The oversized terrace and exposed studio are placed roughly in South Kensington, not at a precise address. North is toward the back in the initial view. No room or portfolio navigation is attached to the model.</p>
+          </div>
+        </details>
+      </footer>
+    </main>
+  </body>
+</html>

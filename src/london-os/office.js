@@ -74,17 +74,37 @@ export function buildOffice(root, floor, data, schedule) {
   for (const x of [-3.08, -1.92]) box(x, floor + 1.18, -11.48, .07, 2.18, .52, ash);
   box(-2.5, floor + 1.18, -11.75, 1.2, 2.18, .045, '#676d6c');
   for (const y of [.15, .91, 1.42, 2.28]) box(-2.5, floor + y, -11.48, 1.25, .065, .57, ash);
-  box(2.42, floor + 1.75, -9.87, 1.25, 1.18, .07, ash);
-  for (const x of [1.93, 2.9]) box(x, floor + .65, -9.9, .06, 1.3, .07, metal);
+  box(2.72, floor + 1.45, -12.3, 1.55, 2, .08, '#aa8967');
+  for (const x of [1.92, 3.52]) box(x, floor + 1.45, -12.24, .05, 2.08, .08, ash);
+  for (const y of [.425, 2.475]) box(2.72, floor + y, -12.24, 1.65, .05, .08, ash);
 
   const shelf = new THREE.Group(), pinboard = new THREE.Group();
   shelf.scale.setScalar(.45); shelf.position.set(-1.08, floor + .17, -10.1);
-  pinboard.scale.setScalar(.45); pinboard.position.set(1.02, floor + .4, -8.3);
+  pinboard.scale.setScalar(.75); pinboard.position.set(2.72, floor + 1.45, -12.22);
   root.add(shelf, pinboard);
   const physical = createPhysicalObjects({
     box, surface, brass: '#b7b7ab', shelf, readingShelf: shelf, pinboard,
     ...data, schedule,
   });
+  const lanyardColors = ['#496c65', '#bd8d49', '#608f9f', '#9775a8', '#788f5a'];
+  for (const item of physical.items.filter(item => item.kind === 'job')) {
+    const upper = item.index < 3;
+    const x = upper ? (item.index - 1) * .65 : (item.index - 3.5) * .65;
+    item.root.position.set(x, upper ? .2 : -.9, .04);
+    item.home.copy(item.root.position);
+    item.stage.set(0, 0, 3.8);
+    const strap = new THREE.Group();
+    strap.name = `lanyard-${item.index}`;
+    strap.position.copy(item.home);
+    pinboard.add(strap);
+    for (const side of [-1, 1]) {
+      const ribbon = box(side * .075, .61, -.015, .035, .56, .016, lanyardColors[item.index], strap);
+      ribbon.rotation.z = side * -.22;
+    }
+    box(0, .345, .015, .06, .09, .025, '#c2c7c4', strap);
+    sphere(0, .88, -.01, .025, .025, .025, metal, strap);
+    item.root.name = `work-history-pass-${item.index}`;
+  }
   const cupboard = new THREE.Group();
   root.add(cupboard);
   const hobbies = createHobbyCupboard({ root: cupboard, box, sphere, cylinder, surface, walnut: ash, brass: '#b7b7ab' });
@@ -100,7 +120,7 @@ export function buildOffice(root, floor, data, schedule) {
     cv: new THREE.Vector3(.35, floor + 1.47, -10.35),
     projects: new THREE.Vector3(-2.5, floor + .6, -11.2),
     reading: new THREE.Vector3(-2.5, floor + 1.88, -11.2),
-    work: new THREE.Vector3(2.4, floor + 1.78, -9.65),
+    work: new THREE.Vector3(2.72, floor + 1.45, -12.05),
     hobbies: new THREE.Vector3(2.55, floor + 1.25, -7.4),
   };
   root.updateMatrixWorld(true);

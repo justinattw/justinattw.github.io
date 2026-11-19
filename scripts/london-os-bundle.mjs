@@ -95,7 +95,7 @@ for (const feature of raw.features) {
       }
     }
   }
-  if (triangles.length) features.push({ kind: feature.kind, name: feature.name, sourceId: feature.sourceId, vertices, triangles });
+  if (triangles.length) features.push({ kind: feature.kind, name: feature.name, sourceId: feature.sourceId, sourceLayer: feature.sourceLayer, vertices, triangles });
 }
 const sources = [
   ['OpenGreenspace', 'greenspace.zip', '173ab5dc5e2645a40c33d23890bb9d1c'],

@@ -12,18 +12,18 @@ export function buildLondon(scene) {
     return materialCache.get(color);
   };
   const boxGeometry = new THREE.BoxGeometry();
-  function mesh(geometry, color, x, y, z, sx = 1, sy = 1, sz = 1) {
+  function mesh(geometry, color, x, y, z, sx = 1, sy = 1, sz = 1, parent = scene) {
     const object = new THREE.Mesh(geometry, material(color));
     object.position.set(x, y, z);
     object.scale.set(sx, sy, sz);
     object.castShadow = object.receiveShadow = true;
-    scene.add(object);
+    parent.add(object);
     return object;
   }
   const box = (color, ...values) => mesh(boxGeometry, color, ...values);
   const cylinder = new THREE.CylinderGeometry(1, 1, 1, 24);
   const cone = new THREE.ConeGeometry(1, 1, 4);
-  const ground = mesh(new THREE.PlaneGeometry(2000, 2000), '#bec0bc', 0, -.04, 0);
+  const ground = mesh(new THREE.PlaneGeometry(2000, 2000), '#d9d4c5', 0, -.04, 0);
   ground.rotation.x = -Math.PI / 2;
   ground.castShadow = false;
 
@@ -41,7 +41,9 @@ export function buildLondon(scene) {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(surface.vertices, 3));
     geometry.setIndex(surface.indices);
     geometry.computeVertexNormals();
-    mesh(geometry, kind === 'park' ? '#9b9e99' : '#8d9ca0', 0, 0, 0).castShadow = false;
+    const surfaceMesh = mesh(geometry, kind === 'park' ? '#80a46a' : '#6da5ba', 0, 0, 0);
+    surfaceMesh.name = `os-${kind}`;
+    surfaceMesh.castShadow = false;
   }
 
   function inFeature(x, z, feature) {
@@ -60,7 +62,7 @@ export function buildLondon(scene) {
   const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const city = [], roofs = [], trees = [], trunks = [], towers = [];
   const house = project(525850, 178700);
-  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528950, 179600]].map(p => project(...p));
+  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528950, 179600], [525800, 180150], [527400, 177550]].map(p => project(...p));
   for (let x = -145; x < 165; x += 3.5) {
     for (let z = -130; z < 125; z += 3.5) {
       const px = x + Math.sin(z * .045) * 2.3 + random() * .7, pz = z + Math.sin(x * .04) * 2 + random() * .7;
@@ -74,45 +76,44 @@ export function buildLondon(scene) {
       if (px > 29 && pz < 1 && pz > -25 && random() > .83) towers.push([px, height + 1.4, pz, width * .7, 2.8, depth * .7]);
     }
   }
+  const waterAreas = areas.filter(area => area.kind === 'water');
   for (const area of areas.filter(f => f.kind === 'park')) {
     const [left, near, right, far] = area.bounds;
     for (let x = left + .5; x < right; x += 2.1) {
       for (let z = near + .5; z < far; z += 2.1) {
         const px = x + random() * 1.3, pz = z + random() * 1.3;
-        if (!inFeature(px, pz, area) || random() > .55) continue;
+        if (!inFeature(px, pz, area) || waterAreas.some(water => inFeature(px, pz, water)) || random() > .55) continue;
         const size = .55 + random() * .55;
         trunks.push([px, .34, pz, .12, .65, .12]);
         trees.push([px, .7 + size * .25, pz, size, size * 1.25, size]);
       }
     }
   }
-  function batch(geometry, color, transforms) {
+  function batch(geometry, color, transforms, palette) {
     const object = new THREE.InstancedMesh(geometry, material(color), transforms.length);
     const part = new THREE.Object3D();
     transforms.forEach(([x, y, z, sx, sy, sz], i) => {
       part.position.set(x, y, z); part.scale.set(sx, sy, sz); part.updateMatrix();
       object.setMatrixAt(i, part.matrix);
+      if (palette) object.setColorAt(i, new THREE.Color(palette[i % palette.length]));
     });
     object.castShadow = object.receiveShadow = true;
     scene.add(object);
   }
-  batch(boxGeometry, '#bcbfb7', city);
-  batch(boxGeometry, '#999f99', roofs);
+  batch(boxGeometry, '#ffffff', city, ['#c5c6bf', '#dbb9a2', '#b8c5c9', '#d2c8b1', '#c5b6b0', '#b8c4ac', '#d7cfbf']);
+  batch(boxGeometry, '#788086', roofs);
   batch(boxGeometry, '#acb5b4', towers);
   batch(boxGeometry, '#777d76', trunks);
-  batch(new THREE.IcosahedronGeometry(.6, 1), '#747a77', trees);
+  batch(new THREE.IcosahedronGeometry(.6, 1), '#5d855c', trees);
 
   const neighbourhood = new THREE.Group();
-  const colorFor = color => {
-    const result = new THREE.Color(color), hsl = result.getHSL({});
-    return result.setHSL(hsl.h, Math.min(hsl.s, .045), hsl.l);
-  };
-  const studio = buildGardens(neighbourhood, { uniformRoofline: true, flatGround: true, furnish: false, colorFor });
+  const studio = buildGardens(neighbourhood, { uniformRoofline: true, flatGround: true, furnish: false, gardenScale: .8, pinboardWall: true });
   neighbourhood.scale.setScalar(.43);
   neighbourhood.position.copy(house);
   scene.add(neighbourhood);
   const desk = studio.desk.multiplyScalar(.43).add(house);
   const marker = studio.marker.multiplyScalar(.43).add(house);
+  const roomCenter = new THREE.Vector3(0, studio.floor + 1.1, -9.6).multiplyScalar(.43).add(house);
   let office;
 
   // Original, deliberately toy-like silhouettes at approximate BNG landmark locations.
@@ -172,9 +173,53 @@ export function buildLondon(scene) {
     box('#c6bc9d', p.x, 1.48, p.z, 3.6, .18, 2.5);
     for (let i = -3; i <= 3; i++) box('#8b9689', p.x + i * .42, .88, p.z + 1.22, .18, .46, .05);
   }
-  hall(); westminster(); eye(); palace();
+  function kensingtonPalace() {
+    const p = landmarkPoints[4], group = new THREE.Group();
+    group.name = 'Kensington Palace';
+    group.position.copy(p);
+    scene.add(group);
+    box('#aa6e57', 0, .75, 0, 3.3, 1.5, 1.2, group);
+    for (const side of [-1, 1]) {
+      box('#b77b60', side * 1.55, .8, .65, .9, 1.6, 1.9, group);
+      box('#5e6669', side * 1.55, 1.65, .65, 1.05, .15, 2.05, group);
+      for (const z of [.2, 1]) box('#cba78c', side * 1.65, 1.95, z, .18, .52, .2, group);
+    }
+    for (const y of [.15, .83, 1.5]) box('#e7d5b6', 0, y, .63, 3.4, .1, .1, group);
+    box('#5e6669', 0, 1.6, 0, 3.45, .16, 1.3, group);
+    for (let x = -1.2; x <= 1.2; x += .4) for (const y of [.48, 1.15]) {
+      box('#e9dfc5', x, y, .66, .22, .39, .06, group);
+      box('#6e8790', x, y, .7, .13, .29, .025, group);
+    }
+    box('#e7d5b6', 0, .5, .76, .44, .9, .12, group);
+    box('#394f50', 0, .4, .84, .25, .65, .05, group);
+  }
+  function albertBridge() {
+    const group = new THREE.Group();
+    group.name = 'Albert Bridge';
+    group.position.copy(landmarkPoints[5]);
+    group.rotation.y = -.32;
+    scene.add(group);
+    box('#e5cfbd', 0, .34, 0, .62, .14, 3.8, group);
+    for (const side of [-1, 1]) {
+      box('#f0d7d0', side * .31, .55, 0, .045, .12, 3.8, group);
+      for (const z of [-1.12, 1.12]) {
+        box('#d8e2d3', side * .31, .95, z, .1, 1.5, .1, group);
+        box('#efb8b2', side * .31, 1.62, z, .2, .12, .2, group);
+        mesh(cone, '#bd8b71', side * .31, 1.83, z, .13, .3, .13, group);
+        for (const end of [-1.8, 0, 1.8]) {
+          const a = new THREE.Vector3(side * .31, 1.58, z), b = new THREE.Vector3(side * .31, .63, end);
+          const delta = b.clone().sub(a);
+          const cable = mesh(new THREE.CylinderGeometry(.016, .016, delta.length(), 5), '#ecdbcf', ...a.clone().add(b).multiplyScalar(.5).toArray(), 1, 1, 1, group);
+          cable.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
+        }
+      }
+      for (let z = -1.7; z <= 1.7; z += .25) box('#dfc7bd', side * .31, .46, z, .025, .28, .025, group);
+    }
+    for (const z of [-1.12, 1.12]) box('#e5d7c2', 0, 1.4, z, .75, .1, .12, group);
+  }
+  hall(); westminster(); eye(); palace(); kensingtonPalace(); albertBridge();
   return {
-    desk, marker, house, featureCount: areas.length, neighbourhood,
+    desk, marker, roomCenter, house, featureCount: areas.length, neighbourhood,
     ensureOffice(data, schedule) {
       if (!office) office = buildOffice(neighbourhood, studio.floor, data, schedule);
       return office;

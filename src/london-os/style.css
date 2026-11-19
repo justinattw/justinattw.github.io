@@ -22,7 +22,7 @@ a { color: inherit; text-underline-offset: 3px; }
 #world-targets, #office-targets { pointer-events: none; }
 canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 canvas:active { cursor: grabbing; }
-.masthead { position: absolute; z-index: 4; left: 36px; right: 36px; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 23px 0; border-bottom: 1px solid #dfe3dd22; }
+.masthead { position: absolute; z-index: 4; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 23px 36px; border-bottom: 1px solid #dfe3dd22; background: #292d2deb; }
 .brand { display: flex; align-items: center; gap: 18px; font-size: 24px; font-weight: 600; letter-spacing: -.8px; white-space: nowrap; }
 .brand-note { border-left: 1px solid #828881; padding-left: 18px; font-size: 11px; font-weight: 400; letter-spacing: .1em; }
 .location { color: #c4c8c0; font-size: 11px; letter-spacing: .06em; }
@@ -93,9 +93,8 @@ footer { position: absolute; bottom: 0; left: 0; right: 0; min-height: 64px; dis
 .skip-link:focus { position: fixed; top: 10px; left: 10px; z-index: 30; background: #f0f0e9; color: #303735; padding: 14px; }
 #portfolio-source:not([hidden]) { position: fixed; z-index: 20; inset: 16px; overflow-y: auto; background: #f0f0e9; color: #303735; padding: 30px; border: 1px solid #aab4aa; }
 .no-script { padding: 110px 24px 24px; }
-body[data-view]:not([data-view="city"]) .masthead { background: #292d2deb; }
 @media (max-width: 760px) {
-  .masthead { left: 18px; right: 18px; padding: 16px 0; gap: 8px; }
+  .masthead { padding: 16px 18px; gap: 8px; }
   .brand { font-size: 20px; gap: 10px; }
   .brand-note { font-size: 9px; padding-left: 10px; }
   .location { display: none; }

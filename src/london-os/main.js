@@ -83,7 +83,7 @@ function resetItems() {
   for (const item of office.physical.items) office.physical.animate(item, false, true);
 }
 
-function navigate(destination, { item = null, history = true, animate = true, focus = history } = {}) {
+function navigate(destination, { item = null, history = true, animate = true, focus = history, moveCamera = true } = {}) {
   if (!['city', 'office', ...chapters.map(chapter => chapter.id)].includes(destination)) return;
   pendingFocus = focus;
   if (selected) resetItems();
@@ -111,9 +111,9 @@ function navigate(destination, { item = null, history = true, animate = true, fo
   if (!card.hidden) showContent();
   if (history) {
     const hash = destination === 'city' ? '' : `#${destination}${item ? `/${item.kind}-${item.index}` : ''}`;
-    if (location.hash !== hash) window.history.pushState(null, '', location.pathname + location.search + hash);
+    if (location.hash !== hash) window.history[history === 'replace' ? 'replaceState' : 'pushState'](null, '', location.pathname + location.search + hash);
   }
-  focusView?.(animate);
+  if (moveCamera) focusView?.(animate);
   if (!ready && focus) (card.hidden ? back : card).focus({ preventScroll: true });
   announcement.textContent = destination === 'office'
     ? 'Inside the study. Choose the computer, shelves, passes or cupboard.'
@@ -218,7 +218,7 @@ function start() {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#292d2d');
   scene.fog = new THREE.Fog('#292d2d', 35, 185);
-  scene.add(new THREE.HemisphereLight('#f0f3f2', '#8d9190', 2.4));
+  scene.add(new THREE.HemisphereLight('#edf4f8', '#93937b', 2.4));
   const sun = new THREE.DirectionalLight('#fff8eb', 2.1);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -240,6 +240,7 @@ function start() {
   const homeDirection = new THREE.Vector3(.45, .72, 1).normalize();
   schedule = () => { if (!frame && !lost) frame = requestAnimationFrame(render); };
   controls.addEventListener('change', schedule);
+  office = model.ensureOffice(data, schedule);
 
   function render(now) {
     frame = 0;
@@ -259,6 +260,19 @@ function start() {
     const cabinetMoving = office?.hobbies.update(delta, view === 'hobbies', reducedMotion.matches) || false;
     const objectMoving = office?.physical.step(now, reducedMotion.matches) || false;
     const radius = camera.position.distanceTo(controls.target);
+    const distance = camera.position.distanceTo(model.roomCenter);
+    if (!motion) {
+      let destination = view;
+      if (distance >= 24) destination = 'city';
+      else if ((distance <= 16 && view === 'city') || (distance >= 16 && !card.hidden)) destination = 'office';
+      if (destination !== view) {
+        const restoreFocus = targets.contains(document.activeElement) || card.contains(document.activeElement);
+        navigate(destination, { history: 'replace', focus: restoreFocus, moveCamera: false });
+        camera.clearViewOffset();
+        controls.target.copy(model.roomCenter);
+        controls.update();
+      }
+    }
     scene.fog.near = Math.max(12, radius * .55);
     scene.fog.far = radius + 115;
     if (cabinetMoving || objectMoving) renderer.shadowMap.needsUpdate = true;
@@ -274,6 +288,9 @@ function start() {
     canvas.dataset.transition = String(Boolean(motion));
     canvas.dataset.orbit = camera.position.toArray().map(n => n.toFixed(3)).join(',');
     canvas.dataset.features = model.featureCount;
+    const center = projectPoint(model.roomCenter);
+    canvas.dataset.roomCenter = `${center.x.toFixed(2)},${center.y.toFixed(2)}`;
+    canvas.dataset.furnishedItems = office.physical.items.length;
     if (motion || cabinetMoving || objectMoving) schedule();
   }
 
@@ -293,21 +310,30 @@ function start() {
     return { x, y, width: element.offsetWidth, height: element.offsetHeight, element };
   }
   function positionMarkers() {
-    explore.hidden = view !== 'city' || Boolean(motion);
-    targets.hidden = view !== 'office' || Boolean(motion);
+    const distance = camera.position.distanceTo(model.roomCenter);
+    const amount = 1 - THREE.MathUtils.smoothstep(distance, 16, 24);
+    explore.hidden = amount === 1 || !card.hidden;
+    targets.hidden = amount === 0 || !card.hidden;
+    explore.style.opacity = 1 - amount;
+    explore.style.pointerEvents = amount < .5 ? 'auto' : 'none';
+    explore.tabIndex = amount < .5 ? 0 : -1;
     if (!explore.hidden) place(explore, model.marker);
     if (!targets.hidden && office) {
       const placements = [];
       for (const element of targets.children) {
         const id = element.dataset.destination;
         const dx = id === 'projects' || id === 'reading' ? -35 : id === 'work' || id === 'hobbies' ? 45 : 0;
-        placements.push(place(element, office.anchors[id], dx, id === 'reading' ? -15 : 0));
+        element.style.opacity = amount;
+        element.style.pointerEvents = amount >= .5 ? 'auto' : 'none';
+        element.tabIndex = amount >= .5 ? 0 : -1;
+        const point = model.marker.clone().lerp(office.anchors[id], amount);
+        placements.push(place(element, point, dx * amount, id === 'reading' ? -15 * amount : 0));
       }
       for (let pass = 0; pass < 8; pass++) {
         for (let i = 0; i < placements.length; i++) for (let j = i + 1; j < placements.length; j++) {
           const a = placements[i], b = placements[j];
           if (Math.abs(a.x - b.x) < (a.width + b.width) / 2 + 8 && Math.abs(a.y - b.y) < (a.height + b.height) / 2 + 10) {
-            const shift = a.y < b.y ? -14 : 14;
+            const shift = (a.y < b.y ? -14 : 14) * amount;
             a.y += shift; b.y -= shift;
           }
         }
@@ -320,10 +346,11 @@ function start() {
     const mobile = canvas.clientWidth <= 760;
     const target = selected
       ? selected.root.parent.localToWorld(selected.stage.clone())
-      : view === 'city' ? model.desk.clone().add(new THREE.Vector3(mobile ? -1 : -7, -3.8, 3))
-        : view === 'office' ? model.desk.clone().add(new THREE.Vector3(-.15, -.1, .3)) : office.anchors[view].clone();
+      : view === 'city' || view === 'office' ? model.roomCenter.clone() : office.anchors[view].clone();
     const radius = view === 'city' ? mobile ? 83 : 62 : view === 'office' ? mobile ? 13 : 7.8 : selected ? mobile ? 3 : 1.8 : mobile ? 3.5 : 2.2;
-    const direction = view === 'city' ? homeDirection : new THREE.Vector3(.04, selected ? .18 : view === 'office' ? .48 : .22, 1).normalize();
+    const direction = view === 'city' ? homeDirection
+      : view === 'work' ? new THREE.Vector3(-.45, .35, 1).normalize()
+        : new THREE.Vector3(.04, selected ? .18 : view === 'office' ? .48 : .22, 1).normalize();
     const to = direction.clone().multiplyScalar(radius).add(target);
     camera.clearViewOffset();
     if (!card.hidden) {

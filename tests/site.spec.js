@@ -64,6 +64,27 @@ async function observeScene(page) {
   });
 }
 
+test('city starts west of the study looking east at a shallow angle and restores that view on return', async ({ page }) => {
+  await observeScene(page);
+  await page.goto('/');
+  await settled(page, 'city');
+  const initial = await page.evaluate(() => ({
+    position: window.londonCamera.position.toArray(),
+    direction: window.londonCamera.getWorldDirection(window.londonCamera.position.clone()).toArray(),
+  }));
+  expect(initial.direction[0]).toBeGreaterThan(.9);
+  expect(initial.direction[2]).toBeCloseTo(0, 5);
+  const incline = Math.asin(-initial.direction[1]) * 180 / Math.PI;
+  expect(incline).toBeGreaterThan(15);
+  expect(incline).toBeLessThan(25);
+  await page.getByRole('button', { name: 'Explore', exact: true }).click();
+  await settled(page, 'office');
+  await page.getByRole('button', { name: 'Back to London', exact: true }).click();
+  await settled(page, 'city');
+  const restored = await page.evaluate(() => window.londonCamera.position.toArray());
+  for (let axis = 0; axis < 3; axis++) expect(restored[axis]).toBeCloseTo(initial.position[axis], 5);
+});
+
 test('expanded OS geography retains valid georeferencing, parks, tidal water and triangles', () => {
   for (const name of ['Hyde Park', 'Kensington Gardens', "Regent's Park", "St James's Park", 'Battersea Park', 'Hampstead Heath']) {
     expect(geography.features.some(feature => feature.kind === 'park' && feature.name === name)).toBe(true);

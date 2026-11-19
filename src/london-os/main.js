@@ -347,10 +347,16 @@ function start() {
     const target = selected
       ? selected.root.parent.localToWorld(selected.stage.clone())
       : view === 'city' || view === 'office' ? model.roomCenter.clone() : office.anchors[view].clone();
-    const radius = view === 'city' ? mobile ? 83 : 62 : view === 'office' ? mobile ? 13 : 7.8 : selected ? mobile ? 3 : 1.8 : mobile ? 3.5 : 2.2;
+    const radius = view === 'city' ? mobile ? 83 : 62
+      : view === 'office' ? mobile ? 13 : 7.8
+        : selected ? mobile ? 3 : 1.8
+          : view === 'work' ? mobile ? 1.45 : .85
+            : view === 'hobbies' ? mobile ? 2.1 : 1.4
+              : mobile ? 3.5 : 2.2;
     const direction = view === 'city' ? homeDirection
-      : view === 'work' ? new THREE.Vector3(-.45, .35, 1).normalize()
-        : new THREE.Vector3(.04, selected ? .18 : view === 'office' ? .48 : .22, 1).normalize();
+      : view === 'work' ? new THREE.Vector3(-.18, .08, 1).normalize()
+        : view === 'hobbies' ? new THREE.Vector3(-1, .22, .45).normalize()
+          : new THREE.Vector3(.04, selected ? .18 : view === 'office' ? .48 : .22, 1).normalize();
     const to = direction.clone().multiplyScalar(radius).add(target);
     camera.clearViewOffset();
     if (!card.hidden) {

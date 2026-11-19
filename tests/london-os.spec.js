@@ -93,7 +93,7 @@ test('Cornwall Gardens has white façades, two buildings per side and no garden 
   expect(after.some(part => ['6e8885', 'aaa38f', 'e2d9c4', 'cabcaa', 'f6edda'].includes(part.color))).toBe(false);
 });
 
-test('new landmarks have open archways, a courtyard and no Kensington side wings', async ({ page }) => {
+test('landmarks retain openings and have visible detailed palace rear elevations', async ({ page }) => {
   await observeScene(page);
   await page.goto('/london-os.html');
   await settled(page, 'city');
@@ -118,6 +118,10 @@ test('new landmarks have open archways, a courtyard and no Kensington side wings
       columnPosition: column.position.toArray(),
       archPosition: window.londonScene.getObjectByName('Marble Arch').position.toArray(),
       shaftHeight: shaft.geometry.boundingBox.max.y - shaft.geometry.boundingBox.min.y,
+      rearWindows: [
+        probe('Buckingham Palace', [.375, 1.3, -4], [0, 0, 1]),
+        probe('Kensington Palace', [.44, 1.2, -3], [0, 0, 1]),
+      ],
     };
   });
   expect(details.kensington).toEqual([null, null]);
@@ -129,9 +133,61 @@ test('new landmarks have open archways, a courtyard and no Kensington side wings
   expect(details.archPosition[0]).toBeCloseTo(-1.48);
   expect(details.archPosition[2]).toBeCloseTo(-17.18);
   expect(details.shaftHeight).toBeGreaterThan(2);
+  expect(details.rearWindows).toEqual(['Sash glazing', 'Sash glazing']);
 });
 
-test('the entire garden square is sixty percent of its original scale', async ({ page }) => {
+test('new neighbouring houses, eastern skyline and right-wall cabinet are placed in the scene', async ({ page }) => {
+  await observeScene(page);
+  await page.goto('/london-os.html#office');
+  await settled(page, 'office');
+  const details = await page.evaluate(() => {
+    const scene = window.londonScene;
+    const vector = (...values) => scene.position.clone().set(...values);
+    const houses = scene.getObjectByName('Neighbouring houses');
+    const cabinet = scene.getObjectByName('Interests cabinet');
+    const board = scene.getObjectByName('Work history pinboard');
+    const heights = ['The Shard', 'The Gherkin', 'Walkie Talkie', 'One Canada Square'].map(name => {
+      const root = scene.getObjectByName(name);
+      let top = 0, finite = true;
+      root.traverse(object => {
+        if (!object.geometry) return;
+        object.geometry.computeBoundingBox();
+        const bounds = object.geometry.boundingBox;
+        top = Math.max(top, root.worldToLocal(object.localToWorld(bounds.max.clone())).y);
+        finite &&= Array.from(object.geometry.attributes.position.array).every(Number.isFinite);
+      });
+      return { top, finite };
+    });
+    return {
+      houses: houses.children.map(house => house.position.toArray()),
+      cabinetPosition: cabinet.position.toArray(),
+      cabinetFacing: vector(0, 0, 1).transformDirection(cabinet.matrixWorld).toArray(),
+      boardScale: board.scale.toArray(),
+      skyline: ['The Shard', 'Walkie Talkie', 'The Gherkin', 'Canary Wharf'].map(name => scene.getObjectByName(name).position.toArray()),
+      wharfTowers: scene.getObjectByName('Canary Wharf').children.length,
+      heights,
+      lattice: scene.getObjectByName('Gherkin diagrid').geometry.attributes.position.count,
+    };
+  });
+  expect(details.houses).toHaveLength(6);
+  for (const [x, , z] of details.houses) expect(Math.abs(x) > 6.5 || z > 5.5).toBe(true);
+  expect(details.cabinetPosition[0]).toBeGreaterThan(3);
+  expect(details.cabinetPosition[2]).toBeLessThan(-7);
+  expect(details.cabinetFacing[0]).toBeCloseTo(-1);
+  expect(details.cabinetFacing[2]).toBeCloseTo(0);
+  expect(details.boardScale).toEqual([.72, .72, .72]);
+  const approximateLocations = [[49.5, 0, -9], [51, 0, -16.5], [53.5, 0, -20], [95.5, 0, -10.5]];
+  details.skyline.forEach((point, index) => point.forEach((value, axis) => expect(value).toBeCloseTo(approximateLocations[index][axis])));
+  expect(details.wharfTowers).toBe(9);
+  expect(details.heights.every(({ finite }) => finite)).toBe(true);
+  expect(details.heights[0].top).toBeGreaterThan(details.heights[3].top);
+  expect(details.heights[3].top).toBeGreaterThan(details.heights[1].top);
+  expect(details.heights[1].top).toBeGreaterThan(5);
+  expect(details.heights[2].top).toBeGreaterThan(5);
+  expect(details.lattice).toBeGreaterThan(1000);
+});
+
+test('the entire garden square is five percent larger than the previous sixty-percent scale', async ({ page }) => {
   const normal = new THREE.Group();
   buildGardens(normal, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true, cornwallGardens: true });
   function dimensions(root, color) {
@@ -156,7 +212,7 @@ test('the entire garden square is sixty percent of its original scale', async ({
     });
   });
   for (let part = 0; part < original.length; part++) {
-    for (let axis = 0; axis < 3; axis++) expect(compact[part][axis] / original[part][axis]).toBeCloseTo(.6);
+    for (let axis = 0; axis < 3; axis++) expect(compact[part][axis] / original[part][axis]).toBeCloseTo(.6 * 1.05);
   }
 });
 
@@ -253,6 +309,15 @@ test('continuous world supports mouse/touch orbit, office exploration and all po
     await expect(page).toHaveURL(new RegExp(`/london-os.html#${id}$`));
     if (id === 'cv') await page.screenshot({ path: testInfo.outputPath(`london-computer-${testInfo.project.name}.png`) });
     if (id === 'work') {
+      const framing = await page.evaluate(() => {
+        const board = window.londonScene.getObjectByName('Work history pinboard');
+        const center = board.localToWorld(board.position.clone().set(0, 0, 0));
+        const top = board.localToWorld(center.clone().set(0, 1.05, 0)).project(window.londonCamera);
+        const bottom = board.localToWorld(center.clone().set(0, -1.05, 0)).project(window.londonCamera);
+        return { distance: window.londonCamera.position.distanceTo(center), height: Math.abs(top.y - bottom.y) / 2 };
+      });
+      expect(framing.distance).toBeLessThan(isMobile ? 1.6 : 1);
+      expect(framing.height).toBeGreaterThan(isMobile ? .3 : .5);
       expect(await page.evaluate(async () => {
         const url = document.querySelector('link[rel="modulepreload"][href*="/three-"]').href;
         const module = await import(url);

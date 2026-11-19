@@ -74,14 +74,20 @@ export function buildOffice(root, floor, data, schedule) {
   for (const x of [-3.08, -1.92]) box(x, floor + 1.18, -11.48, .07, 2.18, .52, ash);
   box(-2.5, floor + 1.18, -11.75, 1.2, 2.18, .045, '#676d6c');
   for (const y of [.15, .91, 1.42, 2.28]) box(-2.5, floor + y, -11.48, 1.25, .065, .57, ash);
-  box(2.72, floor + 1.45, -12.3, 1.55, 2, .08, '#aa8967');
-  for (const x of [1.92, 3.52]) box(x, floor + 1.45, -12.24, .05, 2.08, .08, ash);
-  for (const y of [.425, 2.475]) box(2.72, floor + y, -12.24, 1.65, .05, .08, ash);
+  const board = new THREE.Group();
+  board.name = 'Work history pinboard';
+  board.position.set(2.72, floor + 1.45, -12.22);
+  board.scale.setScalar(.72);
+  root.add(board);
+  box(0, 0, -.08, 1.55, 2, .08, '#aa8967', board);
+  for (const x of [-.8, .8]) box(x, 0, -.02, .05, 2.08, .08, ash, board);
+  for (const y of [-1.025, 1.025]) box(0, y, -.02, 1.65, .05, .08, ash, board);
 
   const shelf = new THREE.Group(), pinboard = new THREE.Group();
   shelf.scale.setScalar(.45); shelf.position.set(-1.08, floor + .17, -10.1);
-  pinboard.scale.setScalar(.75); pinboard.position.set(2.72, floor + 1.45, -12.22);
-  root.add(shelf, pinboard);
+  pinboard.scale.setScalar(.75);
+  root.add(shelf);
+  board.add(pinboard);
   const physical = createPhysicalObjects({
     box, surface, brass: '#b7b7ab', shelf, readingShelf: shelf, pinboard,
     ...data, schedule,
@@ -106,9 +112,11 @@ export function buildOffice(root, floor, data, schedule) {
     item.root.name = `work-history-pass-${item.index}`;
   }
   const cupboard = new THREE.Group();
+  cupboard.name = 'Interests cabinet';
   root.add(cupboard);
   const hobbies = createHobbyCupboard({ root: cupboard, box, sphere, cylinder, surface, walnut: ash, brass: '#b7b7ab' });
-  cupboard.position.set(2.55, floor + .1, -7.65);
+  cupboard.position.set(3.31, floor + .1, -8.05);
+  cupboard.rotation.y = -Math.PI / 2;
   cupboard.scale.setScalar(.43);
   cupboard.traverse(child => {
     if (child.material?.color && !child.material.map) {
@@ -121,9 +129,9 @@ export function buildOffice(root, floor, data, schedule) {
     projects: new THREE.Vector3(-2.5, floor + .6, -11.2),
     reading: new THREE.Vector3(-2.5, floor + 1.88, -11.2),
     work: new THREE.Vector3(2.72, floor + 1.45, -12.05),
-    hobbies: new THREE.Vector3(2.55, floor + 1.25, -7.4),
   };
   root.updateMatrixWorld(true);
   const anchors = Object.fromEntries(Object.entries(points).map(([id, p]) => [id, root.localToWorld(p)]));
+  anchors.hobbies = cupboard.localToWorld(new THREE.Vector3(0, 2.7, .65));
   return { anchors, physical, hobbies };
 }

@@ -62,8 +62,8 @@ export function buildLondon(scene) {
   const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const city = [], roofs = [], trees = [], trunks = [], towers = [];
   const house = project(525850, 178700);
-  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528950, 179600], [525800, 180150], [527400, 177550], [530017, 180419], [527852, 180968]].map(p => project(...p));
-  const nearLandmark = (x, z) => landmarkPoints.some((p, index) => Math.hypot(p.x - x, p.z - z) < (index === 3 ? 6 : 3.3));
+  const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528950, 179600], [525800, 180150], [527400, 177550], [530017, 180419], [527852, 180968], [532950, 180150], [533100, 180900], [533350, 181250], [537550, 180300]].map(p => project(...p));
+  const nearLandmark = (x, z) => landmarkPoints.some((p, index) => Math.hypot(p.x - x, p.z - z) < (index === 11 ? 10 : index === 3 ? 6 : 3.3));
   for (let x = -145; x < 165; x += 3.5) {
     for (let z = -130; z < 125; z += 3.5) {
       const px = x + Math.sin(z * .045) * 2.3 + random() * .7, pz = z + Math.sin(x * .04) * 2 + random() * .7;
@@ -110,7 +110,7 @@ export function buildLondon(scene) {
   const neighbourhood = new THREE.Group();
   neighbourhood.name = 'London garden square';
   const studio = buildGardens(neighbourhood, { uniformRoofline: true, flatGround: true, furnish: false, pinboardWall: true, cornwallGardens: true });
-  neighbourhood.scale.setScalar(.43 * .8 * .75);
+  neighbourhood.scale.setScalar(.43 * .8 * .75 * 1.05);
   neighbourhood.position.copy(house);
   scene.add(neighbourhood);
   neighbourhood.updateMatrixWorld(true);
@@ -127,6 +127,42 @@ export function buildLondon(scene) {
     group.rotation.y = THREE.MathUtils.degToRad(degrees);
     scene.add(group);
     return group;
+  }
+  function sashWindow(parent, x, y, z, width, height, facing = 1) {
+    box('#eee5d3', x, y, z, width + .08, height + .08, .045, parent);
+    box('#607d87', x, y, z + facing * .03, width, height, .025, parent).name = 'Sash glazing';
+    box('#eee5d3', x, y, z + facing * .05, width, .025, .02, parent);
+    box('#eee5d3', x, y, z + facing * .05, .02, height, .02, parent);
+  }
+  function pediment(parent, width, height, y, z) {
+    const shape = new THREE.Shape();
+    shape.moveTo(-width / 2, 0); shape.lineTo(width / 2, 0); shape.lineTo(0, height); shape.closePath();
+    return mesh(new THREE.ExtrudeGeometry(shape, { depth: .1, bevelEnabled: false }), '#eee5d3', 0, y, z, 1, 1, 1, parent);
+  }
+  function neighbouringHouses() {
+    const group = new THREE.Group();
+    group.name = 'Neighbouring houses';
+    group.position.copy(house);
+    scene.add(group);
+    const hippedRoof = new THREE.CylinderGeometry(.42, Math.SQRT1_2, 1, 4, 1, false, Math.PI / 4);
+    for (const [index, [x, z, turn]] of [[-7.1, -2.6, Math.PI / 2], [-7.1, 1.5, Math.PI / 2], [7.1, -2.6, -Math.PI / 2], [7.1, 1.5, -Math.PI / 2], [-3.3, 6.1, Math.PI], [3.3, 6.1, Math.PI]].entries()) {
+      const building = new THREE.Group();
+      building.name = `Neighbouring house ${index + 1}`;
+      building.position.set(x, 0, z);
+      building.rotation.y = turn;
+      group.add(building);
+      const height = 1.5 + (index % 3) * .16;
+      box(['#ece8dd', '#d2b5a2', '#c4cbd0'][index % 3], 0, height / 2, 0, 1.5, height, 1.7, building);
+      for (const y of [.12, height * .48, height]) box('#f3eee1', 0, y, 0, 1.6, .07, 1.8, building);
+      mesh(hippedRoof, '#626c70', 0, height + .21, 0, 1.65, .42, 1.85, building);
+      box('#ac8e7c', .45, height + .38, -.3, .18, .52, .22, building);
+      box('#eee5d3', .45, height + .66, -.3, .24, .06, .28, building);
+      for (const side of [-1, 1]) for (const bay of [-.42, .42]) for (const y of [height * .27, height * .74]) {
+        sashWindow(building, bay, y, side * .87, .22, .34, side);
+      }
+      box('#40575a', 0, .28, .9, .22, .5, .05, building);
+      box('#e3d8c6', 0, .07, 1.02, .38, .12, .3, building);
+    }
   }
   function hall() {
     const p = landmarkPoints[0];
@@ -224,20 +260,147 @@ export function buildLondon(scene) {
       box(trim, side * 2.5, .43, 2.8, .22, .8, .22, group);
       mesh(new THREE.SphereGeometry(.11, 8, 6), '#b7a16b', side * 2.5, .91, 2.8, 1, 1, 1, group);
     }
+    const rear = new THREE.Group();
+    rear.name = 'Buckingham garden front';
+    group.add(rear);
+    box(stone, 0, .86, -1.72, 1.65, 1.5, .34, rear);
+    for (const y of [.24, 1.02, 1.52]) {
+      box(trim, 0, y, -1.66, 4.85, .09, .1, rear);
+      box(trim, 0, y, -1.91, 1.78, .09, .12, rear);
+    }
+    for (let bay = -6; bay <= 6; bay++) {
+      const x = bay * .33, z = Math.abs(x) < .8 ? -1.92 : -1.67;
+      for (const y of [.61, 1.25]) {
+        if (bay === 0 && y === .61) continue;
+        sashWindow(rear, x, y, z, .14, .28, -1);
+      }
+    }
+    for (const x of [-2.34, 2.34]) for (const y of [.4, .66, .92, 1.18, 1.44]) box(trim, x, y, -1.67, .18, .18, .09, rear);
+    box(trim, 0, .12, -2.02, 2.2, .16, 1, rear);
+    box(trim, 0, .05, -2.25, 2.55, .08, .85, rear);
+    box('#53696b', 0, .62, -1.96, .25, .75, .035, rear);
+    for (const x of [-.66, -.24, .24, .66]) {
+      mesh(cylinder, trim, x, .72, -2.12, .055, 1.08, .055, rear);
+      box(trim, x, .22, -2.12, .17, .1, .17, rear);
+      box(trim, x, 1.27, -2.12, .17, .1, .17, rear);
+    }
+    box(trim, 0, 1.37, -2.08, 1.65, .14, .5, rear);
+    pediment(rear, 1.85, .32, 1.7, -1.98).name = 'Buckingham garden pediment';
+    for (const side of [-1, 1]) {
+      box(trim, side * 2.08, 1.88, -1.3, .58, .12, .8, rear);
+      for (let x = .95; x <= 2.2; x += .18) box(trim, side * x, 1.83, -1.65, .045, .18, .06, rear);
+    }
   }
   function kensingtonPalace() {
     // The east front faces the Round Pond at a BNG grid bearing of about 72.5 degrees.
     const group = landmark('Kensington Palace', 4, 107.48);
     box('#aa6e57', 0, .75, 0, 3.3, 1.5, 1.2, group);
-    for (const x of [-1.15, 1.15]) for (const z of [-.35, .35]) box('#cba78c', x, 1.88, z, .18, .52, .2, group);
-    for (const y of [.15, .83, 1.5]) box('#e7d5b6', 0, y, .63, 3.4, .1, .1, group);
-    box('#5e6669', 0, 1.6, 0, 3.45, .16, 1.3, group);
+    for (const x of [-1.15, 1.15]) for (const z of [-.35, .35]) {
+      box('#cba78c', x, 1.94, z, .18, .62, .2, group);
+      box('#e7d5b6', x, 2.26, z, .26, .08, .28, group);
+    }
+    for (const y of [.15, .83, 1.5]) box('#e7d5b6', 0, y, 0, 3.4, .1, 1.3, group);
+    mesh(new THREE.CylinderGeometry(.42, Math.SQRT1_2, 1, 4, 1, false, Math.PI / 4), '#5e6669', 0, 1.74, 0, 3.5, .4, 1.4, group);
     for (let x = -1.2; x <= 1.2; x += .4) for (const y of [.48, 1.15]) {
       box('#e9dfc5', x, y, .66, .22, .39, .06, group);
       box('#6e8790', x, y, .7, .13, .29, .025, group);
     }
     box('#e7d5b6', 0, .5, .76, .44, .9, .12, group);
     box('#394f50', 0, .4, .84, .25, .65, .05, group);
+    const rear = new THREE.Group();
+    rear.name = 'Kensington west front';
+    group.add(rear);
+    box('#b77d63', 0, .75, -.64, .72, 1.5, .17, rear);
+    for (const y of [.15, .83, 1.5]) box('#e7d5b6', 0, y, -.75, .8, .1, .1, rear);
+    for (let bay = -3; bay <= 3; bay++) for (const y of [.48, 1.15]) {
+      if (bay === 0 && y === .48) continue;
+      sashWindow(rear, bay * .4, y, bay === 0 ? -.77 : -.66, .15, .3, -1);
+    }
+    for (const x of [-1.57, 1.57]) for (const y of [.32, .56, 1.05, 1.3]) box('#d7b99b', x, y, -.63, .14, .16, .08, rear);
+    box('#e7d5b6', 0, .42, -.8, .43, .76, .08, rear);
+    box('#394f50', 0, .38, -.85, .26, .64, .035, rear);
+    box('#e7d5b6', 0, .82, -.86, .57, .08, .2, rear);
+    pediment(rear, .64, .17, .88, -.95);
+    for (let step = 0; step < 3; step++) box('#c6b69b', 0, .045 + step * .055, -1.05 + step * .1, .7 - step * .08, .09 + step * .11, .38, rear);
+    for (const side of [-1, 1]) for (const z of [-.28, .28]) for (const y of [.48, 1.15]) {
+      box('#e7d5b6', side * 1.67, y, z, .06, .38, .22, group);
+      box('#607d87', side * 1.71, y, z, .025, .29, .14, group);
+    }
+  }
+  function citySkyline() {
+    const shard = landmark('The Shard', 8, 18);
+    mesh(new THREE.ConeGeometry(1, 8.5, 3), '#98b9c3', 0, 4.35, 0, 1.15, 1, 1.05, shard).name = 'Shard taper';
+    mesh(new THREE.ConeGeometry(1, 7.1, 3), '#bad0d0', .32, 3.65, .12, .75, 1, .8, shard);
+    const shardLines = [];
+    for (let side = 0; side < 3; side++) {
+      const angle = side * Math.PI * 2 / 3;
+      shardLines.push(new THREE.Vector3(Math.sin(angle) * 1.15, .1, Math.cos(angle) * 1.05), new THREE.Vector3(0, 8.6, 0));
+    }
+    shard.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(shardLines), new THREE.LineBasicMaterial({ color: '#e0e5da' })));
+
+    const walkie = landmark('Walkie Talkie', 9, -12);
+    mesh(new THREE.CylinderGeometry(1, .6, 5.1, 4, 1, false, Math.PI / 4), '#91afb8', 0, 2.65, 0, 1.7, 1, 1.2, walkie).name = 'Walkie Talkie flared tower';
+    for (let floor = 0; floor <= 12; floor++) {
+      const t = floor / 12, width = Math.SQRT2 * 1.7 * (.6 + .4 * t), depth = Math.SQRT2 * 1.2 * (.6 + .4 * t);
+      for (const side of [-1, 1]) {
+        box('#d0d8cf', 0, .1 + t * 5.1, side * depth / 2, width, .035, .035, walkie);
+        box('#d0d8cf', side * width / 2, .1 + t * 5.1, 0, .035, .035, depth, walkie);
+      }
+    }
+    const ribs = [];
+    for (let bay = -4; bay <= 4; bay++) for (const side of [-1, 1]) {
+      ribs.push(new THREE.Vector3(bay * .175, .1, side * .52), new THREE.Vector3(bay * .295, 5.2, side * .86));
+    }
+    walkie.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ribs), new THREE.LineBasicMaterial({ color: '#e1e4d8' })));
+    box('#526e66', 0, 5.25, 0, 2.25, .16, 1.52, walkie);
+    box('#e2e4d9', 0, 5.43, 0, 2.52, .12, 1.82, walkie);
+
+    const gherkin = landmark('The Gherkin', 10);
+    const profile = [[0, .1], [.62, .1], [.85, 1], [1.04, 2.4], [.94, 3.8], [.65, 4.9], [.25, 5.5], [0, 5.7]];
+    mesh(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 32), '#7d9fa7', 0, 0, 0, 1, 1, 1, gherkin).name = 'Gherkin glazing';
+    const radiusAt = y => {
+      const index = profile.findIndex((point, i) => i > 1 && point[1] >= y);
+      const [a, b] = [profile[index - 1], profile[index]];
+      return THREE.MathUtils.lerp(a[0], b[0], (y - a[1]) / (b[1] - a[1]));
+    };
+    const lattice = [];
+    for (let spiral = 0; spiral < 12; spiral++) for (const direction of [-1, 1]) {
+      let previous;
+      for (let step = 0; step <= 40; step++) {
+        const y = .1 + step / 40 * 5.6, radius = radiusAt(y) + .015;
+        const angle = spiral * Math.PI / 6 + direction * y * .48;
+        const point = new THREE.Vector3(Math.sin(angle) * radius, y, Math.cos(angle) * radius);
+        if (previous) lattice.push(previous, point);
+        previous = point;
+      }
+    }
+    const diagrid = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lattice), new THREE.LineBasicMaterial({ color: '#d2ded7' }));
+    diagrid.name = 'Gherkin diagrid';
+    gherkin.add(diagrid);
+  }
+  function canaryWharf() {
+    const group = landmark('Canary Wharf', 11);
+    const placements = [
+      [0, 0, 1.75, 1.75, 7.1], [-3, -.8, 1.7, 1.8, 6.1], [3, -.7, 1.75, 1.65, 6.4],
+      [-5.7, 1.7, 1.5, 1.8, 5], [5.7, 2, 1.5, 1.65, 5.7], [-2.7, 3.2, 1.8, 1.65, 4.7],
+      [.5, 3.7, 1.6, 1.5, 5.5], [3.7, -4.1, 1.45, 1.5, 6.7], [-.3, -4.1, 1.6, 1.7, 5.3],
+    ];
+    placements.forEach(([x, z, width, depth, height], index) => {
+      const tower = new THREE.Group();
+      tower.name = index === 0 ? 'One Canada Square' : `Canary Wharf tower ${index}`;
+      tower.position.set(x, 0, z);
+      group.add(tower);
+      box(['#9caeaf', '#829ca7', '#b2bdba'][index % 3], 0, height / 2 + .1, 0, width, height, depth, tower);
+      box('#d3d5ca', 0, .12, 0, width + .22, .2, depth + .22, tower);
+      for (let y = .5; y < height; y += .45) box('#c1ceca', 0, y, 0, width + .025, .04, depth + .025, tower);
+      for (const side of [-1, 1]) for (const end of [-1, 1]) box('#d8dcd1', side * width / 2, height / 2 + .1, end * depth / 2, .07, height, .07, tower);
+      box('#cbd3ca', 0, height + .14, 0, width + .1, .1, depth + .1, tower);
+      if (index === 0) {
+        mesh(cone, '#d7dbcf', 0, height + .76, 0, 1.4, 1.15, 1.4, tower).rotation.y = Math.PI / 4;
+      } else {
+        box('#657b7f', 0, height + .3, -.1, width * .58, .25, depth * .58, tower);
+      }
+    });
   }
   function albertBridge() {
     // Local +z follows the bridge south-southeast, about 161.3 degrees from grid north.
@@ -314,7 +477,7 @@ export function buildLondon(scene) {
       box('#d7cebb', 0, 1.88, side * .375, .75, .14, .025, group);
     }
   }
-  hall(); westminster(); eye(); palace(); kensingtonPalace(); albertBridge(); nelsonsColumn(); marbleArch();
+  neighbouringHouses(); hall(); westminster(); eye(); palace(); kensingtonPalace(); albertBridge(); nelsonsColumn(); marbleArch(); citySkyline(); canaryWharf();
   return {
     desk, marker, roomCenter, house, featureCount: areas.length, neighbourhood,
     ensureOffice(data, schedule) {

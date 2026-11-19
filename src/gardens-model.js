@@ -3,7 +3,7 @@ import * as THREE from 'three';
 const stone = '#e2d9c4', trim = '#f6edda', slate = '#4c5556';
 const iron = '#28312b', glass = '#455d60', wood = '#865538';
 
-export function buildGardens(scene) {
+export function buildGardens(scene, { uniformRoofline = false, flatGround = false, furnish = true, colorFor = color => color } = {}) {
   const geometries = {
     box: new THREE.BoxGeometry(),
     column: new THREE.CylinderGeometry(.43, .5, 1, 16),
@@ -91,8 +91,10 @@ export function buildGardens(scene) {
   const house = { x: 0, z: -9.7, width: 7.7, depth: 6.5, height: 9.65 };
   const { x, z, width, depth, height } = house;
   const wallZ = z - depth / 2 + .48, floor = height + .11;
-  box('#766755', 0, -.77, .25, 40, 1.35, 33.4);
-  box('#5a615c', 0, -.08, .25, 39.9, .18, 33.3);
+  if (!flatGround) {
+    box('#766755', 0, -.77, .25, 40, 1.35, 33.4);
+    box('#5a615c', 0, -.08, .25, 39.9, .18, 33.3);
+  }
   box('#d0c4ae', 0, .085, -9.75, 38.8, .16, 11.6);
   box('#bdb49d', 0, .10, 4.8, 24.7, .23, 16.4);
   box('#57734b', 0, .23, 4.8, 24.25, .08, 15.9);
@@ -108,8 +110,8 @@ export function buildGardens(scene) {
     for (const edge of [-3.28, 12.88]) railing(side * 6.52, .25, edge, 11.39);
     for (let i = 0; i < 3; i++) {
       const nearX = side * (6.2 + i * 4.5);
-      terrace(nearX, -9.7, 4.4, 5.2, 5.65 + (2 - i) * .32, 0, false, i % 2 ? '#cabcaa' : stone);
-      terrace(side * 16.65, 1.1 + i * 4.44, 4.35, 4.45, 4.6 + i * .25, -side * Math.PI / 2);
+      terrace(nearX, -9.7, 4.4, 5.2, uniformRoofline ? height + 2.55 : 5.65 + (2 - i) * .32, 0, false, i % 2 ? '#cabcaa' : stone);
+      terrace(side * 16.65, 1.1 + i * 4.44, 4.35, 4.45, uniformRoofline ? height + 2.55 : 4.6 + i * .25, -side * Math.PI / 2);
     }
     box('#cec1a8', side * 16.7, .09, 5.8, 6.4, .16, 17.1);
     railing(side * 3.2, .15, -5.08, 2.5);
@@ -152,47 +154,52 @@ export function buildGardens(scene) {
     shape('arch', '#759191', u + .56, floor + 1.62, wallZ + .24, .67, 1.28, .06);
     box('#e1d0a6', u + .56, floor + 1.50, wallZ + .28, .69, .045, .05);
   }
-  box('#8d5342', .40, floor + .129, z + .55, 3.65, .027, 3.33);
-  box('#b98458', .40, floor + .145, z + .55, 3.41, .024, 3.10);
-  box('#794e35', .40, floor + .160, z + .55, 3.27, .020, 2.96);
-  const deskZ = z - .83;
-  box('#8d5c3a', .49, floor + 1.02, deskZ, 3.06, .16, 1.37);
-  for (const xx of [-.84, 1.82]) for (const zz of [-.53, .53]) {
-    box(wood, xx, floor + .58, deskZ + zz, .125, .87, .125);
-  }
-  box('#cdbd9f', .38, floor + 1.52, deskZ - .22, .94, .80, .62);
-  box('#273c31', .38, floor + 1.55, deskZ + .105, .72, .51, .045);
-  for (let i = 0; i < 3; i++) box('#9aa978', .27 - i * .035, floor + 1.62 - i * .086, deskZ + .134, .27 - i * .07, .018, .013);
-  box('#cdbd9f', .38, floor + 1.135, deskZ + .43, .82, .07, .27);
-  column('#b89457', 1.58, floor + 1.18, deskZ - .18, .34, .10, .34);
-  column('#b89457', 1.58, floor + 1.49, deskZ - .18, .08, .62, .08);
-  column('#e7c674', 1.58, floor + 1.88, deskZ - .18, .51, .28, .51);
-  box('#304f42', .58, floor + .66, deskZ + 1.31, .82, .15, .80);
-  box('#304f42', .58, floor + 1.01, deskZ + 1.66, .84, .74, .11);
-  column(iron, .58, floor + .36, deskZ + 1.31, .14, .41, .14);
-  column(iron, .58, floor + .15, deskZ + 1.31, .64, .09, .64);
-  const shelfZ = z - 1.25;
-  box(wood, -2.63, floor + 1.19, shelfZ, .51, 2.08, 1.53);
-  for (const h of [.52, 1.13, 1.75]) {
-    box('#b78354', -2.33, floor + h, shelfZ, .29, .08, 1.52);
-    for (let i = 0; i < 6; i++) box(['#c7925c', '#9d624c', '#a8a371'][i % 3], -2.31, floor + h + .24, shelfZ - .55 + i * .18, .22, .38, .13);
+  if (furnish) {
+    box('#8d5342', .40, floor + .129, z + .55, 3.65, .027, 3.33);
+    box('#b98458', .40, floor + .145, z + .55, 3.41, .024, 3.10);
+    box('#794e35', .40, floor + .160, z + .55, 3.27, .020, 2.96);
+    const deskZ = z - .83;
+    box('#8d5c3a', .49, floor + 1.02, deskZ, 3.06, .16, 1.37);
+    for (const xx of [-.84, 1.82]) for (const zz of [-.53, .53]) {
+      box(wood, xx, floor + .58, deskZ + zz, .125, .87, .125);
+    }
+    box('#cdbd9f', .38, floor + 1.52, deskZ - .22, .94, .80, .62);
+    box('#273c31', .38, floor + 1.55, deskZ + .105, .72, .51, .045);
+    for (let i = 0; i < 3; i++) box('#9aa978', .27 - i * .035, floor + 1.62 - i * .086, deskZ + .134, .27 - i * .07, .018, .013);
+    box('#cdbd9f', .38, floor + 1.135, deskZ + .43, .82, .07, .27);
+    column('#b89457', 1.58, floor + 1.18, deskZ - .18, .34, .10, .34);
+    column('#b89457', 1.58, floor + 1.49, deskZ - .18, .08, .62, .08);
+    column('#e7c674', 1.58, floor + 1.88, deskZ - .18, .51, .28, .51);
+    box('#304f42', .58, floor + .66, deskZ + 1.31, .82, .15, .80);
+    box('#304f42', .58, floor + 1.01, deskZ + 1.66, .84, .74, .11);
+    column(iron, .58, floor + .36, deskZ + 1.31, .14, .41, .14);
+    column(iron, .58, floor + .15, deskZ + 1.31, .64, .09, .64);
+    const shelfZ = z - 1.25;
+    box(wood, -2.63, floor + 1.19, shelfZ, .51, 2.08, 1.53);
+    for (const h of [.52, 1.13, 1.75]) {
+      box('#b78354', -2.33, floor + h, shelfZ, .29, .08, 1.52);
+      for (let i = 0; i < 6; i++) box(['#c7925c', '#9d624c', '#a8a371'][i % 3], -2.31, floor + h + .24, shelfZ - .55 + i * .18, .22, .38, .13);
+    }
   }
 
   for (const { type, color, transforms } of batches.values()) {
-    const material = new THREE.MeshStandardMaterial({ color, roughness: .88 });
+    const material = new THREE.MeshStandardMaterial({ color: colorFor(color), roughness: .88 });
     const mesh = new THREE.InstancedMesh(geometries[type], material, transforms.length);
     transforms.forEach((matrix, i) => mesh.setMatrixAt(i, matrix));
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
   }
-  const glow = new THREE.PointLight('#ffd18c', 22, 7);
-  glow.position.set(1.58, floor + 1.86, deskZ - .02);
-  scene.add(glow);
+  if (furnish) {
+    const glow = new THREE.PointLight('#ffd18c', 22, 7);
+    glow.position.set(1.58, floor + 1.86, z - .85);
+    scene.add(glow);
+  }
 
   return {
-    desk: new THREE.Vector3(.47, floor + 1.22, deskZ),
-    marker: new THREE.Vector3(.47, floor + 3.40, deskZ),
+    desk: new THREE.Vector3(.47, floor + 1.22, z - .83),
+    marker: new THREE.Vector3(.47, floor + 3.40, z - .83),
+    floor,
   };
 }
 

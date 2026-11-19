@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { readFileSync } from 'node:fs';
 import { loadProjects, withProjectContent } from './project-content.js';
+import { withLondonPortfolioContent } from './src/london-os/content-plugin.js';
 
 const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -37,7 +38,7 @@ export default defineConfig({
   plugins: [{
     name: 'goodreads-content',
     transformIndexHtml(html) {
-      return withProjectContent(withReadingContent(html, JSON.parse(readFileSync(new URL('./src/reading.json', import.meta.url), 'utf8'))), loadProjects());
+      return withProjectContent(withReadingContent(withLondonPortfolioContent(html), JSON.parse(readFileSync(new URL('./src/reading.json', import.meta.url), 'utf8'))), loadProjects());
     },
   }],
   build: {

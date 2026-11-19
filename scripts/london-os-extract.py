@@ -6,7 +6,7 @@ from pathlib import Path
 import shapefile
 
 root = Path(sys.argv[1])
-bounds = (522000, 175000, 534000, 183500)
+bounds = (516000, 170000, 542000, 190000)
 features = []
 for kind, path in [
     ("park", root / "greenspace/TQ_GreenspaceSite"),

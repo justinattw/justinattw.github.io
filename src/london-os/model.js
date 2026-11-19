@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import geography from './geography.json';
 import { buildGardens } from '../gardens-model.js';
+import { buildOffice } from './office.js';
 
 export const project = (easting, northing) => new THREE.Vector3((easting - 528000) / 100, 0, (179250 - northing) / 100);
 
@@ -22,49 +23,55 @@ export function buildLondon(scene) {
   const box = (color, ...values) => mesh(boxGeometry, color, ...values);
   const cylinder = new THREE.CylinderGeometry(1, 1, 1, 24);
   const cone = new THREE.ConeGeometry(1, 1, 4);
-  box('#9c9275', 0, -1.7, 0, 120.5, 3.2, 85.5);
-  box('#d7cdb5', 0, -.18, 0, 120, .25, 85);
-  box('#b7a16e', 0, -2.95, 0, 120.7, .12, 85.7);
+  const ground = mesh(new THREE.PlaneGeometry(2000, 2000), '#bec0bc', 0, -.04, 0);
+  ground.rotation.x = -Math.PI / 2;
+  ground.castShadow = false;
 
+  const surfaces = { park: { vertices: [], indices: [] }, water: { vertices: [], indices: [] } };
   const areas = geography.features.map(feature => {
     const points = feature.vertices.map(([e, n]) => project(e, n));
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(points.flatMap(p => [p.x, feature.kind === 'park' ? .06 : .085, p.z]), 3));
-    geometry.setIndex(feature.triangles);
-    geometry.computeVertexNormals();
-    const surface = mesh(geometry, feature.kind === 'park' ? '#829563' : '#699da5', 0, 0, 0);
-    surface.castShadow = false;
+    const surface = surfaces[feature.kind], offset = surface.vertices.length / 3;
+    for (const point of points) surface.vertices.push(point.x, feature.kind === 'park' ? .015 : .025, point.z);
+    for (const index of feature.triangles) surface.indices.push(index + offset);
     const xs = points.map(p => p.x), zs = points.map(p => p.z);
     return { ...feature, points, bounds: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)] };
   });
+  for (const [kind, surface] of Object.entries(surfaces)) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(surface.vertices, 3));
+    geometry.setIndex(surface.indices);
+    geometry.computeVertexNormals();
+    mesh(geometry, kind === 'park' ? '#9b9e99' : '#8d9ca0', 0, 0, 0).castShadow = false;
+  }
 
   function inFeature(x, z, feature) {
     const [left, near, right, far] = feature.bounds;
     if (x < left || x > right || z < near || z > far) return false;
     const cross = (a, b) => (x - b.x) * (a.z - b.z) - (a.x - b.x) * (z - b.z);
     for (let i = 0; i < feature.triangles.length; i += 3) {
-      const [a, b, c] = feature.triangles.slice(i, i + 3).map(index => feature.points[index]);
-      const values = [cross(a, b), cross(b, c), cross(c, a)];
-      if (values.every(v => v >= 0) || values.every(v => v <= 0)) return true;
+      const a = feature.points[feature.triangles[i]], b = feature.points[feature.triangles[i + 1]], c = feature.points[feature.triangles[i + 2]];
+      const ab = cross(a, b), bc = cross(b, c), ca = cross(c, a);
+      if ((ab >= 0 && bc >= 0 && ca >= 0) || (ab <= 0 && bc <= 0 && ca <= 0)) return true;
     }
     return false;
   }
   const occupied = (x, z) => areas.some(area => inFeature(x, z, area));
   let seed = 719;
   const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-  const city = [], roofs = [], trees = [], trunks = [];
+  const city = [], roofs = [], trees = [], trunks = [], towers = [];
   const house = project(525850, 178700);
   const landmarkPoints = [[526600, 179550], [530294, 179648], [530700, 179980], [528950, 179600]].map(p => project(...p));
-  for (let x = -58; x < 59; x += 2.85) {
-    for (let z = -40; z < 42; z += 2.85) {
-      const px = x + random() * .5, pz = z + random() * .5;
+  for (let x = -145; x < 165; x += 3.5) {
+    for (let z = -130; z < 125; z += 3.5) {
+      const px = x + Math.sin(z * .045) * 2.3 + random() * .7, pz = z + Math.sin(x * .04) * 2 + random() * .7;
       if (Math.abs(px - house.x) < 9 && Math.abs(pz - house.z) < 9) continue;
       if (landmarkPoints.some(p => Math.hypot(p.x - px, p.z - pz) < 3.3)) continue;
       if ([[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]].some(([dx, dz]) => occupied(px + dx, pz + dz))) continue;
-      const height = .45 + random() * 1.25;
-      const width = 1.25 + random() * .5, depth = 1.25 + random() * .5;
+      const height = .6 + random() * 1.7;
+      const width = 1.65 + random() * .7, depth = 1.65 + random() * .7;
       city.push([px, height / 2, pz, width, height, depth]);
       roofs.push([px, height + .07, pz, width + .06, .13, depth + .06]);
+      if (px > 29 && pz < 1 && pz > -25 && random() > .83) towers.push([px, height + 1.4, pz, width * .7, 2.8, depth * .7]);
     }
   }
   for (const area of areas.filter(f => f.kind === 'park')) {
@@ -89,18 +96,24 @@ export function buildLondon(scene) {
     object.castShadow = object.receiveShadow = true;
     scene.add(object);
   }
-  batch(boxGeometry, '#c6bca3', city);
-  batch(boxGeometry, '#999886', roofs);
-  batch(boxGeometry, '#6d654b', trunks);
-  batch(new THREE.IcosahedronGeometry(.6, 1), '#526f48', trees);
+  batch(boxGeometry, '#bcbfb7', city);
+  batch(boxGeometry, '#999f99', roofs);
+  batch(boxGeometry, '#acb5b4', towers);
+  batch(boxGeometry, '#777d76', trunks);
+  batch(new THREE.IcosahedronGeometry(.6, 1), '#747a77', trees);
 
-  // Reuse the original architectural vignette without altering the existing route.
   const neighbourhood = new THREE.Group();
-  const studio = buildGardens(neighbourhood);
+  const colorFor = color => {
+    const result = new THREE.Color(color), hsl = result.getHSL({});
+    return result.setHSL(hsl.h, Math.min(hsl.s, .045), hsl.l);
+  };
+  const studio = buildGardens(neighbourhood, { uniformRoofline: true, flatGround: true, furnish: false, colorFor });
   neighbourhood.scale.setScalar(.43);
-  neighbourhood.position.copy(house).add(new THREE.Vector3(0, .66, 0));
+  neighbourhood.position.copy(house);
   scene.add(neighbourhood);
-  const desk = studio.desk.multiplyScalar(.43).add(neighbourhood.position);
+  const desk = studio.desk.multiplyScalar(.43).add(house);
+  const marker = studio.marker.multiplyScalar(.43).add(house);
+  let office;
 
   // Original, deliberately toy-like silhouettes at approximate BNG landmark locations.
   function hall() {
@@ -160,29 +173,13 @@ export function buildLondon(scene) {
     for (let i = -3; i <= 3; i++) box('#8b9689', p.x + i * .42, .88, p.z + 1.22, .18, .46, .05);
   }
   hall(); westminster(); eye(); palace();
-  const labels = [
-    label(scene, 'KENSINGTON GARDENS', 526200, 180350, 10),
-    label(scene, 'HYDE PARK', 527600, 180450, 8),
-    label(scene, "REGENT'S PARK", 528000, 182750, 9),
-    label(scene, 'BATTERSEA PARK', 527950, 177100, 9),
-    label(scene, 'STUDIO', 525850, 178200, 5, '#f4d59a', 7.5),
-  ];
-  return { desk, labels, featureCount: areas.length };
-}
-
-function label(scene, text, e, n, width, color = '#f2ead3', height = 2.1) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 768; canvas.height = 96;
-  const context = canvas.getContext('2d');
-  context.font = '500 40px sans-serif'; context.textAlign = 'center';
-  context.fillStyle = '#34443d'; context.fillRect(0, 0, 768, 96);
-  context.fillStyle = color; context.fillText(text, 384, 63);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
-  sprite.position.copy(project(e, n)).setY(height);
-  sprite.scale.set(width, width / 8, 1);
-  sprite.renderOrder = 2;
-  scene.add(sprite);
-  return sprite;
+  return {
+    desk, marker, house, featureCount: areas.length, neighbourhood,
+    ensureOffice(data, schedule) {
+      if (!office) office = buildOffice(neighbourhood, studio.floor, data, schedule);
+      return office;
+    },
+  };
 }
 
 function clockTexture() {

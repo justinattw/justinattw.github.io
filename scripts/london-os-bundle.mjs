@@ -115,7 +115,7 @@ const sources = [
 const data = {
   crs: 'EPSG:27700', bounds: raw.bounds, toleranceMetres: tolerance,
   attribution: 'Contains Ordnance Survey data © Crown copyright and database right 2026.',
-  retrieved: '2026-11-18', sources, simplificationRefinements, features,
+  retrieved: '2026-11-19', sources, simplificationRefinements, features,
 };
 writeFileSync('src/london-os/geography.json', JSON.stringify(data) + '\n');
 console.log(`${features.length} OS features, ${features.reduce((n, f) => n + f.triangles.length / 3, 0)} clipped triangles`);
